@@ -10767,7 +10767,7 @@ In your community admin, open **Integrations → Developer Studio → CLI Access
 gsds login PAIRING-CODE-FROM-COMMUNITY
 ```
 
-Pairing codes are single-use and expire **1 minute** after they are issued, so open **CLI Access** with your terminal already open. The resulting session token is stored in your OS keychain, is tenant-scoped, and lasts about **8 hours**.
+Pairing codes are single-use and expire **1 minute** after they are issued, so open **CLI Access** with your terminal already open. The resulting session token is stored in your OS keychain, is tenant-scoped, and lasts **8 hours**.
 
 You can confirm the session at any time:
 
@@ -10841,7 +10841,7 @@ gsds login PAIRING-CODE-FROM-COMMUNITY
 
 Pairing codes have a **1-minute** time-to-live, so open **CLI Access** with your terminal already open. If the code expires before you paste it, refresh **CLI Access** and try again.
 
-On success, `gsds` stores a tenant-scoped session token that is valid for approximately **8 hours**.
+On success, `gsds` stores a tenant-scoped session token that is valid for **8 hours**.
 
 ## Check the current session
 
@@ -10853,7 +10853,7 @@ Reports which tenant the current session is bound to and whether it is still val
 
 ## Refresh an expired session
 
-There is no refresh flow — when the ~8-hour token expires, get a new pairing code from **Integrations → Developer Studio → CLI Access** and redeem it:
+There is no refresh flow — when the 8-hour token expires, get a new pairing code from **Integrations → Developer Studio → CLI Access** and redeem it:
 
 ```sh
 gsds login NEW-PAIRING-CODE
@@ -11133,7 +11133,7 @@ gsds build --validate
 `gsds preview` and `gsds connector test` require a paired session. There is no headless login flow — pairing codes come from **Integrations → Developer Studio → CLI Access** in the community and expire in 1 minute. Options for CI:
 
 * Keep those commands out of the pipeline (recommended). Run them locally during development, and gate CI on `gsds build --validate` instead.
-* Run pairing on a bootstrap machine and rely on the ~8-hour session, understanding it will expire.
+* Run pairing on a bootstrap machine and rely on the 8-hour session, understanding it will expire.
 
 ## Force the file-based credential fallback
 
@@ -11174,7 +11174,7 @@ Redeems a pairing code, reports the current session, or does nothing when no arg
 | `<pairing_code>` | Redeem a pairing code from **Integrations → Developer Studio → CLI Access** in the community. Codes expire 1 minute after issue |
 | `--status` | Print the current session's tenant binding and validity |
 
-The resulting session lasts approximately 8 hours and is tenant-scoped. There is no refresh flow.
+The resulting session lasts 8 hours and is tenant-scoped. There is no refresh flow.
 
 ## `gsds logout`
 
@@ -11368,7 +11368,7 @@ Reference of the error messages `gsds` prints and the state each one describes.
 
 ## `session is invalid or expired`
 
-The stored session token failed against your tenant. Session tokens are valid for approximately 8 hours and cannot be refreshed. Affects `gsds preview` and `gsds connector test`.
+The stored session token failed against your tenant. Session tokens are valid for 8 hours and cannot be refreshed. Affects `gsds preview` and `gsds connector test`.
 
 **Recover:** Get a fresh pairing code from **Integrations → Developer Studio → CLI Access** in your community and redeem it with `gsds login <pairing_code>`. Confirm with `gsds login --status`.
 

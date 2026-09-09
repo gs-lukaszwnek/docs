@@ -47,7 +47,7 @@ In your community admin, open **Integrations → Developer Studio → CLI Access
 gsds login PAIRING-CODE-FROM-COMMUNITY
 ```
 
-Pairing codes are single-use and expire **1 minute** after they are issued, so open **CLI Access** with your terminal already open. The resulting session token is stored in your OS keychain, is tenant-scoped, and lasts about **8 hours**.
+Pairing codes are single-use and expire **1 minute** after they are issued, so open **CLI Access** with your terminal already open. The resulting session token is stored in your OS keychain, is tenant-scoped, and lasts **8 hours**.
 
 You can confirm the session at any time:
 

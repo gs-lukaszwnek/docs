@@ -17,7 +17,7 @@ Reference of the error messages `gsds` prints and the state each one describes.
 
 ## `session is invalid or expired`
 
-The stored session token failed against your tenant. Session tokens are valid for approximately 8 hours and cannot be refreshed. Affects `gsds preview` and `gsds connector test`.
+The stored session token failed against your tenant. Session tokens are valid for 8 hours and cannot be refreshed. Affects `gsds preview` and `gsds connector test`.
 
 **Recover:** Get a fresh pairing code from **Integrations → Developer Studio → CLI Access** in your community and redeem it with `gsds login <pairing_code>`. Confirm with `gsds login --status`.
 

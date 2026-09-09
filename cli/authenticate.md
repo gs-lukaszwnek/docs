@@ -25,7 +25,7 @@ gsds login PAIRING-CODE-FROM-COMMUNITY
 
 Pairing codes have a **1-minute** time-to-live, so open **CLI Access** with your terminal already open. If the code expires before you paste it, refresh **CLI Access** and try again.
 
-On success, `gsds` stores a tenant-scoped session token that is valid for approximately **8 hours**.
+On success, `gsds` stores a tenant-scoped session token that is valid for **8 hours**.
 
 ## Check the current session
 
@@ -37,7 +37,7 @@ Reports which tenant the current session is bound to and whether it is still val
 
 ## Refresh an expired session
 
-There is no refresh flow — when the ~8-hour token expires, get a new pairing code from **Integrations → Developer Studio → CLI Access** and redeem it:
+There is no refresh flow — when the 8-hour token expires, get a new pairing code from **Integrations → Developer Studio → CLI Access** and redeem it:
 
 ```sh
 gsds login NEW-PAIRING-CODE
