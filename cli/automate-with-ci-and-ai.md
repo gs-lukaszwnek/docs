@@ -70,7 +70,7 @@ gsds build --validate
 
 ## Sessions in CI
 
-`gsds preview` and `gsds connector test` require a paired session. There is no headless login flow — pairing codes come from the community UI and expire in 2 minutes. Options for CI:
+`gsds preview` and `gsds connector test` require a paired session. There is no headless login flow — pairing codes come from **Integrations → Developer Studio → CLI Access** in the community and expire in 1 minute. Options for CI:
 
 * Keep those commands out of the pipeline (recommended). Run them locally during development, and gate CI on `gsds build --validate` instead.
 * Run pairing on a bootstrap machine and rely on the ~8-hour session, understanding it will expire.

@@ -10735,7 +10735,7 @@ You need:
 
 * Node.js 18 or later
 * A community account with developer access
-* Access to the **Connect CLI** flow inside your community, so you can mint a pairing code
+* Access to **CLI Access** under **Integrations → Developer Studio** in your community, so you can mint a pairing code. This surface is rolling out to pilot tenants — if you don't see it, talk to your Gainsight team about enabling it
 
 ## 1. Install the CLI
 
@@ -10761,13 +10761,13 @@ cd acme-widgets
 
 ## 3. Pair a session with your community
 
-Open your community, run the **Connect CLI** flow, and copy the **pairing code** it shows you. Then redeem it:
+In your community admin, open **Integrations → Developer Studio → CLI Access**, mint a pairing code, and copy it. Then redeem it in your terminal:
 
 ```sh
 gsds login PAIRING-CODE-FROM-COMMUNITY
 ```
 
-Pairing codes are single-use and expire **2 minutes** after they are issued, so redeem them right away. The resulting session token is stored in your OS keychain, is tenant-scoped, and lasts about **8 hours**.
+Pairing codes are single-use and expire **1 minute** after they are issued, so mint the code with your terminal already open. The resulting session token is stored in your OS keychain, is tenant-scoped, and lasts about **8 hours**.
 
 You can confirm the session at any time:
 
@@ -10827,15 +10827,25 @@ Use this guide when you need to pair `gsds` with your community for the first ti
 
 ## Pair a session
 
-Open the **Connect CLI** flow inside your community and copy the **pairing code**. Then run:
+Mint a pairing code in your community:
+
+1. In the community admin, open **Integrations** from the left rail.
+2. Under the **Developer Studio** heading, choose **CLI Access**.
+3. Mint a pairing code from that page and copy it.
+
+Then, in your terminal, redeem it:
 
 ```sh
 gsds login PAIRING-CODE-FROM-COMMUNITY
 ```
 
-Pairing codes have a **2-minute** time-to-live, so redeem them immediately. If the code expires, mint a fresh one from your community and try again.
+Pairing codes have a **1-minute** time-to-live, so mint and redeem them back-to-back. If the code expires before you paste it, mint a fresh one from **CLI Access** and try again.
 
 On success, `gsds` stores a tenant-scoped session token that is valid for approximately **8 hours**.
+
+::: info Pilot availability
+CLI Access is rolling out to pilot tenants. If **CLI Access** does not appear under **Developer Studio** in your community, talk to your Gainsight team about enabling it for your tenant.
+:::
 
 ## Check the current session
 
@@ -10847,7 +10857,7 @@ Reports which tenant the current session is bound to and whether it is still val
 
 ## Refresh an expired session
 
-There is no refresh flow — when the ~8-hour token expires, mint a new pairing code from your community and redeem it:
+There is no refresh flow — when the ~8-hour token expires, mint a new pairing code from **Integrations → Developer Studio → CLI Access** and redeem it:
 
 ```sh
 gsds login NEW-PAIRING-CODE
@@ -11124,7 +11134,7 @@ gsds build --validate
 
 ## Sessions in CI
 
-`gsds preview` and `gsds connector test` require a paired session. There is no headless login flow — pairing codes come from the community UI and expire in 2 minutes. Options for CI:
+`gsds preview` and `gsds connector test` require a paired session. There is no headless login flow — pairing codes come from **Integrations → Developer Studio → CLI Access** in the community and expire in 1 minute. Options for CI:
 
 * Keep those commands out of the pipeline (recommended). Run them locally during development, and gate CI on `gsds build --validate` instead.
 * Run pairing on a bootstrap machine and rely on the ~8-hour session, understanding it will expire.
@@ -11165,7 +11175,7 @@ Redeems a pairing code, reports the current session, or does nothing when no arg
 
 | Argument | Description |
 |---|---|
-| `<pairing_code>` | Redeem a pairing code from the community's **Connect CLI** flow. Codes expire 2 minutes after issue |
+| `<pairing_code>` | Redeem a pairing code minted from **Integrations → Developer Studio → CLI Access** in the community. Codes expire 1 minute after issue |
 | `--status` | Print the current session's tenant binding and validity |
 
 The resulting session lasts approximately 8 hours and is tenant-scoped. There is no refresh flow.
@@ -11364,13 +11374,13 @@ Reference of the error messages `gsds` prints and the state each one describes.
 
 The stored session token failed against your tenant. Session tokens are valid for approximately 8 hours and cannot be refreshed. Affects `gsds preview` and `gsds connector test`.
 
-**Recover:** Mint a fresh pairing code from your community's **Connect CLI** flow and redeem it with `gsds login <pairing_code>`. Confirm with `gsds login --status`.
+**Recover:** Mint a fresh pairing code from **Integrations → Developer Studio → CLI Access** in your community and redeem it with `gsds login <pairing_code>`. Confirm with `gsds login --status`.
 
 ## Pairing code expired
 
-Pairing codes have a 2-minute time-to-live.
+Pairing codes have a 1-minute time-to-live.
 
-**Recover:** Mint a fresh pairing code and redeem it immediately.
+**Recover:** Mint a fresh pairing code from **CLI Access** and redeem it immediately, with your terminal already open.
 
 ## `Missing required field: category`
 

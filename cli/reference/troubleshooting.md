@@ -19,13 +19,13 @@ Reference of the error messages `gsds` prints and the state each one describes.
 
 The stored session token failed against your tenant. Session tokens are valid for approximately 8 hours and cannot be refreshed. Affects `gsds preview` and `gsds connector test`.
 
-**Recover:** Mint a fresh pairing code from your community's **Connect CLI** flow and redeem it with `gsds login <pairing_code>`. Confirm with `gsds login --status`.
+**Recover:** Mint a fresh pairing code from **Integrations → Developer Studio → CLI Access** in your community and redeem it with `gsds login <pairing_code>`. Confirm with `gsds login --status`.
 
 ## Pairing code expired
 
-Pairing codes have a 2-minute time-to-live.
+Pairing codes have a 1-minute time-to-live.
 
-**Recover:** Mint a fresh pairing code and redeem it immediately.
+**Recover:** Mint a fresh pairing code from **CLI Access** and redeem it immediately, with your terminal already open.
 
 ## `Missing required field: category`
 

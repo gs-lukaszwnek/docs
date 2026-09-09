@@ -15,7 +15,7 @@ You need:
 
 * Node.js 18 or later
 * A community account with developer access
-* Access to the **Connect CLI** flow inside your community, so you can mint a pairing code
+* Access to **CLI Access** under **Integrations → Developer Studio** in your community, so you can mint a pairing code. This surface is rolling out to pilot tenants — if you don't see it, talk to your Gainsight team about enabling it
 
 ## 1. Install the CLI
 
@@ -41,13 +41,13 @@ cd acme-widgets
 
 ## 3. Pair a session with your community
 
-Open your community, run the **Connect CLI** flow, and copy the **pairing code** it shows you. Then redeem it:
+In your community admin, open **Integrations → Developer Studio → CLI Access**, mint a pairing code, and copy it. Then redeem it in your terminal:
 
 ```sh
 gsds login PAIRING-CODE-FROM-COMMUNITY
 ```
 
-Pairing codes are single-use and expire **2 minutes** after they are issued, so redeem them right away. The resulting session token is stored in your OS keychain, is tenant-scoped, and lasts about **8 hours**.
+Pairing codes are single-use and expire **1 minute** after they are issued, so mint the code with your terminal already open. The resulting session token is stored in your OS keychain, is tenant-scoped, and lasts about **8 hours**.
 
 You can confirm the session at any time:
 
