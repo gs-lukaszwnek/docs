@@ -22,7 +22,7 @@ Redeems a pairing code, reports the current session, or does nothing when no arg
 
 | Argument | Description |
 |---|---|
-| `<pairing_code>` | Redeem a pairing code minted from **Integrations → Developer Studio → CLI Access** in the community. Codes expire 1 minute after issue |
+| `<pairing_code>` | Redeem a pairing code from **Integrations → Developer Studio → CLI Access** in the community. Codes expire 1 minute after issue |
 | `--status` | Print the current session's tenant binding and validity |
 
 The resulting session lasts approximately 8 hours and is tenant-scoped. There is no refresh flow.

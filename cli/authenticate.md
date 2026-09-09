@@ -11,11 +11,11 @@ Use this guide when you need to pair `gsds` with your community for the first ti
 
 ## Pair a session
 
-Mint a pairing code in your community:
+Get a pairing code from your community:
 
-1. In the community admin, open **Integrations** from the left rail.
+1. In the community admin, open **Integrations** from the sidebar.
 2. Under the **Developer Studio** heading, choose **CLI Access**.
-3. Mint a pairing code from that page and copy it.
+3. Copy the pairing code from that page.
 
 Then, in your terminal, redeem it:
 
@@ -23,13 +23,9 @@ Then, in your terminal, redeem it:
 gsds login PAIRING-CODE-FROM-COMMUNITY
 ```
 
-Pairing codes have a **1-minute** time-to-live, so mint and redeem them back-to-back. If the code expires before you paste it, mint a fresh one from **CLI Access** and try again.
+Pairing codes have a **1-minute** time-to-live, so open **CLI Access** with your terminal already open. If the code expires before you paste it, refresh **CLI Access** and try again.
 
 On success, `gsds` stores a tenant-scoped session token that is valid for approximately **8 hours**.
-
-::: info Pilot availability
-CLI Access is rolling out to pilot tenants. If **CLI Access** does not appear under **Developer Studio** in your community, talk to your Gainsight team about enabling it for your tenant.
-:::
 
 ## Check the current session
 
@@ -41,7 +37,7 @@ Reports which tenant the current session is bound to and whether it is still val
 
 ## Refresh an expired session
 
-There is no refresh flow — when the ~8-hour token expires, mint a new pairing code from **Integrations → Developer Studio → CLI Access** and redeem it:
+There is no refresh flow — when the ~8-hour token expires, get a new pairing code from **Integrations → Developer Studio → CLI Access** and redeem it:
 
 ```sh
 gsds login NEW-PAIRING-CODE
