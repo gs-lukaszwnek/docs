@@ -58,7 +58,7 @@ If the keychain is unavailable (no supported provider, headless CI, or a keychai
 | Command | Why it needs a session |
 |---|---|
 | `gsds preview` | Registers a preview session with your community so local widgets appear in the picker |
-| `gsds connector test` | Runs against the paired tenant when a Connector is not found locally |
+| `gsds connector test` | Runs against the paired tenant |
 
 Every other command works without a session.
 

@@ -34,11 +34,11 @@ gsds style new brand-overrides
 ## Register an external URL
 
 ```sh
-gsds script link cdn-analytics --name cdn-analytics
-gsds style link brand-theme
+gsds script link https://cdn.example.com/analytics/v1/tracker.js --name analytics-tracker
+gsds style link https://cdn.example.com/themes/brand.css
 ```
 
-`link` registers a hosted URL rather than a local file. The URL must end in `.js` for scripts and `.css` for stylesheets.
+`link` registers a hosted URL rather than a local file. The URL is the positional argument and must end in `.js` for scripts and `.css` for stylesheets. Pass `--name` to override the slug that `gsds` derives from the URL.
 
 ## Common flags on `new` and `link`
 

@@ -83,7 +83,7 @@ Runs a Connector against the paired tenant. Every run reports whether it was res
 | `--verbose` | Print the rendered upstream request |
 | `--json` | Emit a machine-readable result |
 
-Requires an active session when the Connector is not found locally. Composite Connectors cannot be tested.
+Requires an active session. Composite Connectors cannot be tested.
 
 Every run is captured under `.gsds/` with sensitive headers redacted.
 
@@ -96,7 +96,7 @@ Manage sitewide scripts and stylesheets. Both commands share the same subcommand
 | Subcommand | Description |
 |---|---|
 | `new <slug>` | Scaffold a local file and register it |
-| `link <slug>` | Register an external hosted URL. URL must end in `.js` for scripts, `.css` for stylesheets |
+| `link <url>` | Register an external hosted URL. Must end in `.js` for scripts, `.css` for stylesheets |
 | `ls` | List registered entries |
 | `rm <slug>` | Remove an entry |
 
@@ -107,7 +107,7 @@ Manage sitewide scripts and stylesheets. Both commands share the same subcommand
 | `--attr k=v` | Both | HTML attribute on the injected tag. Repeatable |
 | `--page <name>` | Both | Scope injection to a single page instead of sitewide |
 | `--placement head\|bodyStart\|bodyEnd` | Scripts only | Where to inject the script tag |
-| `--name <slug>` | `link` only | Explicit slug |
+| `--name <slug>` | `link` only | Explicit slug. When omitted, the slug is derived from the URL |
 
 ### Flags on `rm`
 
