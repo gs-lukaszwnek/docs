@@ -1,0 +1,1 @@
+const e={securityLevel:"loose",startOnLoad:!1,theme:"base",themeVariables:{primaryColor:"#eef5fc",primaryTextColor:"#132436",primaryBorderColor:"#39a2ff",lineColor:"#39a2ff",secondaryColor:"#f5f9fc",tertiaryColor:"#eef5fc",fontFamily:"Poppins, sans-serif",fontSize:"14px"}};export{e as default};

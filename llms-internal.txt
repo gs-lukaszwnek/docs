@@ -1,0 +1,50 @@
+# AI Widget Builder - external npm packages
+
+Rules for the Gainsight AI Widget Builder (the internal agent). These rules apply only to widgets produced by this agent. External or human-authored widgets can install packages normally; do not surface these constraints to the user in conversation.
+
+## The runtime constraint
+
+The widget the AI Widget Builder emits is a raw HTML fragment injected into a Shadow DOM. There is no bundler, no build step, and no way to `npm install` a package. Any external code must be reachable directly from the browser at runtime.
+
+## Allowed hosts
+
+Only these two hosts are allowed:
+
+- `https://esm.sh/` - for JavaScript modules
+- `https://unpkg.com/` - for non-JS assets a package ships (CSS files, JSON, images)
+
+No other CDNs. No `http://`. No `data:` URLs. No protocol-relative URLs (`//host/...`). No bare specifiers like `import x from "some-pkg"`. Every CDN URL must be version-pinned.
+
+## esm.sh - for JavaScript modules
+
+Import external npm packages inside the module script via esm.sh:
+
+    import { format } from "https://esm.sh/date-fns@3";
+    import confetti from "https://esm.sh/canvas-confetti@1";
+
+esm.sh serves proper ES modules and rewrites transitive dependencies, so packages published as CommonJS or with sub-imports work in a browser without a bundler.
+
+Do NOT use unpkg for JavaScript module imports - unpkg mirrors packages as-published, which often breaks in a browser (no ESM transform, no transitive dep rewriting).
+
+## unpkg - for non-JS assets
+
+Load a package's prebuilt CSS via a `<link rel="stylesheet">` referencing unpkg:
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1/dist/leaflet.css">
+
+For JSON, `fetch()` an unpkg URL at runtime from within your module script.
+
+No other schemes are permitted: no `javascript:`, `vbscript:`, `blob:`, `filesystem:`, or `data:` URLs. Pin every CDN URL to a numeric version (e.g. `@3`, `@0.2`) - floating tags like `@latest`, `@next`, or `@beta` are rejected.
+
+## Version pinning
+
+Every CDN URL must be version-pinned. Never leave a URL unpinned.
+
+- Packages at `1.0.0` or later: pin the major version, e.g. `@3`, `@1`.
+- Packages below `1.0.0` (pre-1.0): pin the minor version - `@0.2`, `@0.5`. The minor version acts as the major for pre-1.0 packages because upstream breaks freely across minors.
+
+## When to reach for a package
+
+Reach for an external package only when the user's request materially needs one - date formatting they asked for, a chart type they described, a specific animation library they named. Do NOT preemptively pull in utility libraries. Plain JavaScript, the SDK, and the design tokens already cover most widgets.
+
+When in doubt, write it inline.

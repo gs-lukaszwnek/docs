@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://developer-portal.gainsight.com/docs/sitemap.xml
