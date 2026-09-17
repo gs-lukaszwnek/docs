@@ -10748,16 +10748,27 @@ gsds --version
 
 You should see a version like `1.2.0` or newer.
 
-## 2. Create an empty project
+## 2. Set up your project directory
 
-Create a project directory and scaffold it in one step:
+`gsds init` handles two situations. Use whichever matches you.
+
+**Starting from scratch**, with an empty or nonexistent directory:
 
 ```sh
 gsds init acme-widgets
 cd acme-widgets
 ```
 
-`gsds init` writes a `gsds.json` marker at the project root, seeds empty `extensions_registry.json` and `connectors_registry.json` files, and adds a `.gitignore` that excludes `.gsds/` (CLI capture output) from your repository.
+**Reusing an existing repo** — for example one cloned from the [Widgets Repository Template](https://github.com/gainsight-hub/widgets-repository-template), or any project that already has `extensions_registry.json`, `connectors_registry.json`, or a `gsds.json`:
+
+```sh
+cd acme-widgets
+gsds init acme-widgets
+```
+
+`gsds init` recognizes that shape automatically — no extra flag needed — and backfills only whatever's missing (`gsds.json`, `AGENTS.md`, `README.md`, `.gitignore`, and the registries if absent). It never overwrites a file it finds, so nothing you already have is at risk.
+
+Only reach for `--force` when the directory is non-empty **and** doesn't already look like a widget project — for instance a brand-new GitHub repo created with just a `README.md` or `LICENSE`. `--force` means "this directory is safe to scaffold into, trust me"; it does not loosen the never-overwrite guarantee, and it isn't the default answer for "I already have a repo" — most existing widget repos are recognized without it. See [`gsds init`](reference/commands#gsds-init) in the command reference for the exact list of what's recognized.
 
 ## 3. Pair a session with your community
 
@@ -10793,7 +10804,7 @@ Start the local dev server:
 gsds preview
 ```
 
-`gsds preview` requires an active session (you just paired one). It boots each widget's `dev` script, using the package manager it detects from that widget's lockfile, and registers a preview session with your community.
+`gsds preview` requires an active session (you just paired one). It boots each widget's `dev` script — using the package manager declared in that widget's `package.json` (`packageManager` field), falling back to lockfile detection when that's absent — and registers a preview session with your community.
 
 Open your community, browse to a page, and open the widget picker in the No-Code Builder. Your local widgets appear alongside published ones while `gsds preview` is running. Edit files under `widgets/revenue-overview/` and the picker reflects your changes.
 
@@ -11158,12 +11169,25 @@ Documents every `gsds` subcommand at version `1.2.0`. Every command exits `0` on
 
 ## `gsds init`
 
-Scaffolds a new project. Writes `gsds.json`, empty `extensions_registry.json` and `connectors_registry.json`, `AGENTS.md`, `README.md`, and a `.gitignore` that excludes `.gsds/`.
+Scaffolds a new project, or backfills missing files into an existing widget project. Writes only whatever's missing — `gsds.json`, `extensions_registry.json`, `connectors_registry.json`, `AGENTS.md`, `README.md`, and a `.gitignore` that excludes `.gsds/` — and never overwrites a file it finds.
 
 | Argument | Required | Description |
 |---|---|---|
-| `<name>` | Yes | Directory to create |
-| `--force` | No | Allow initializing into a non-empty directory |
+| `<name>` | Yes | Directory to create or reuse |
+| `--force` | No | Allow scaffolding into a non-empty directory that isn't recognized as an existing widget project (see below) |
+
+### When you need `--force` — and when you don't
+
+`gsds init` recognizes an existing widget project automatically, with no flag, when the target directory already has any of:
+
+* `extensions_registry.json`
+* `connectors_registry.json`
+* `gsds.json`
+* the legacy `widget_registry.json` — migrated to `extensions_registry.json` automatically, content preserved byte-for-byte
+
+This covers the common case of an existing repo: one cloned or forked from the [Widgets Repository Template](https://github.com/gainsight-hub/widgets-repository-template), or any project already using `gsds`. Re-running `gsds init` against it backfills only what's missing (for example a `gsds.json` a template clone never had) and leaves every existing file untouched.
+
+`--force` is only for a non-empty directory with **none** of the markers above — for example a freshly created GitHub repo with just a `README.md` or `LICENSE` from the "initialize this repository" checkbox. `--force` means "I know this directory is safe to scaffold into"; it does not relax the never-overwrite guarantee, and it is not the default answer to "I already have a repo" — most existing widget repos already carry one of the markers above and need no flag at all. A bare `widgets/` directory by itself does not count as a marker: it's too generic a signal (design assets, an unrelated monorepo subfolder) to prove a widget project on its own.
 
 ## `gsds login`
 
@@ -11359,6 +11383,12 @@ description: >-
 # CLI Troubleshooting
 
 Reference of the error messages `gsds` prints and the state each one describes.
+
+## `Directory "<path>" is not empty`
+
+`gsds init` didn't recognize the target directory as an existing widget project — none of `extensions_registry.json`, `connectors_registry.json`, `gsds.json`, or the legacy `widget_registry.json` are present — and it isn't empty.
+
+**Recover:** If the directory already has project files that should have matched one of the names above (perhaps under a slightly different name), fix that first. Otherwise, if you're sure the directory is safe to scaffold into, re-run with `--force`. See [`gsds init`](commands#gsds-init) for the full list of what's recognized without it.
 
 ## `no gsds.json found`
 

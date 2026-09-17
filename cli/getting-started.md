@@ -28,16 +28,27 @@ gsds --version
 
 You should see a version like `1.2.0` or newer.
 
-## 2. Create an empty project
+## 2. Set up your project directory
 
-Create a project directory and scaffold it in one step:
+`gsds init` handles two situations. Use whichever matches you.
+
+**Starting from scratch**, with an empty or nonexistent directory:
 
 ```sh
 gsds init acme-widgets
 cd acme-widgets
 ```
 
-`gsds init` writes a `gsds.json` marker at the project root, seeds empty `extensions_registry.json` and `connectors_registry.json` files, and adds a `.gitignore` that excludes `.gsds/` (CLI capture output) from your repository.
+**Reusing an existing repo** — for example one cloned from the [Widgets Repository Template](https://github.com/gainsight-hub/widgets-repository-template), or any project that already has `extensions_registry.json`, `connectors_registry.json`, or a `gsds.json`:
+
+```sh
+cd acme-widgets
+gsds init acme-widgets
+```
+
+`gsds init` recognizes that shape automatically — no extra flag needed — and backfills only whatever's missing (`gsds.json`, `AGENTS.md`, `README.md`, `.gitignore`, and the registries if absent). It never overwrites a file it finds, so nothing you already have is at risk.
+
+Only reach for `--force` when the directory is non-empty **and** doesn't already look like a widget project — for instance a brand-new GitHub repo created with just a `README.md` or `LICENSE`. `--force` means "this directory is safe to scaffold into, trust me"; it does not loosen the never-overwrite guarantee, and it isn't the default answer for "I already have a repo" — most existing widget repos are recognized without it. See [`gsds init`](reference/commands#gsds-init) in the command reference for the exact list of what's recognized.
 
 ## 3. Pair a session with your community
 
@@ -73,7 +84,7 @@ Start the local dev server:
 gsds preview
 ```
 
-`gsds preview` requires an active session (you just paired one). It boots each widget's `dev` script, using the package manager it detects from that widget's lockfile, and registers a preview session with your community.
+`gsds preview` requires an active session (you just paired one). It boots each widget's `dev` script — using the package manager declared in that widget's `package.json` (`packageManager` field), falling back to lockfile detection when that's absent — and registers a preview session with your community.
 
 Open your community, browse to a page, and open the widget picker in the No-Code Builder. Your local widgets appear alongside published ones while `gsds preview` is running. Edit files under `widgets/revenue-overview/` and the picker reflects your changes.
 

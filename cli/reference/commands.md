@@ -9,12 +9,25 @@ Documents every `gsds` subcommand at version `1.2.0`. Every command exits `0` on
 
 ## `gsds init`
 
-Scaffolds a new project. Writes `gsds.json`, empty `extensions_registry.json` and `connectors_registry.json`, `AGENTS.md`, `README.md`, and a `.gitignore` that excludes `.gsds/`.
+Scaffolds a new project, or backfills missing files into an existing widget project. Writes only whatever's missing — `gsds.json`, `extensions_registry.json`, `connectors_registry.json`, `AGENTS.md`, `README.md`, and a `.gitignore` that excludes `.gsds/` — and never overwrites a file it finds.
 
 | Argument | Required | Description |
 |---|---|---|
-| `<name>` | Yes | Directory to create |
-| `--force` | No | Allow initializing into a non-empty directory |
+| `<name>` | Yes | Directory to create or reuse |
+| `--force` | No | Allow scaffolding into a non-empty directory that isn't recognized as an existing widget project (see below) |
+
+### When you need `--force` — and when you don't
+
+`gsds init` recognizes an existing widget project automatically, with no flag, when the target directory already has any of:
+
+* `extensions_registry.json`
+* `connectors_registry.json`
+* `gsds.json`
+* the legacy `widget_registry.json` — migrated to `extensions_registry.json` automatically, content preserved byte-for-byte
+
+This covers the common case of an existing repo: one cloned or forked from the [Widgets Repository Template](https://github.com/gainsight-hub/widgets-repository-template), or any project already using `gsds`. Re-running `gsds init` against it backfills only what's missing (for example a `gsds.json` a template clone never had) and leaves every existing file untouched.
+
+`--force` is only for a non-empty directory with **none** of the markers above — for example a freshly created GitHub repo with just a `README.md` or `LICENSE` from the "initialize this repository" checkbox. `--force` means "I know this directory is safe to scaffold into"; it does not relax the never-overwrite guarantee, and it is not the default answer to "I already have a repo" — most existing widget repos already carry one of the markers above and need no flag at all. A bare `widgets/` directory by itself does not count as a marker: it's too generic a signal (design assets, an unrelated monorepo subfolder) to prove a widget project on its own.
 
 ## `gsds login`
 

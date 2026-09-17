@@ -9,6 +9,12 @@ description: >-
 
 Reference of the error messages `gsds` prints and the state each one describes.
 
+## `Directory "<path>" is not empty`
+
+`gsds init` didn't recognize the target directory as an existing widget project — none of `extensions_registry.json`, `connectors_registry.json`, `gsds.json`, or the legacy `widget_registry.json` are present — and it isn't empty.
+
+**Recover:** If the directory already has project files that should have matched one of the names above (perhaps under a slightly different name), fix that first. Otherwise, if you're sure the directory is safe to scaffold into, re-run with `--force`. See [`gsds init`](commands#gsds-init) for the full list of what's recognized without it.
+
 ## `no gsds.json found`
 
 `gsds` is running outside a project. Every command except `gsds init` requires a `gsds.json` marker in the current directory or an ancestor.
