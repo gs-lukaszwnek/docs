@@ -14,7 +14,7 @@ The SDK is **browser-only**: all methods that call the backend or DOM throw if r
 
 ## Availability
 
-The SDK is bundled with the community frontend and attached to `window` (or `globalThis`) when the destination app loads. There is no separate npm package; you use the global `ChWebSdk` object on pages that include the community bundle.
+The SDK is bundled with the community frontend and attached to `window` (or `globalThis`) when the community page loads. There is no separate npm package; you use the global `ChWebSdk` object on pages that include the community bundle.
 
 ```javascript
 // After the community app has loaded
@@ -38,10 +38,12 @@ See [Examples](examples) for more runnable snippets covering search, subscriptio
 
 * [DOM and lifecycle](methods-constructors#dom-and-lifecycle) — wait for the page or an element, bind events, load scripts and styles
 * [Content Methods](methods-constructors#content-methods) — search, like, vote, and manage articles, questions, ideas, and more
-* [User Methods](methods-constructors#user-methods) — search users and fetch by ID
+* [Context Methods](methods-constructors#context-methods) — fetch the current viewer's public user object (replaces `inSidedData.user`)
+* [User Methods](methods-constructors#user-methods) — look up, search, list, and filter community members
 * [Subscription Methods](methods-constructors#subscription-methods) — subscribe to topics and categories
 
 ## Next Steps
 
-* [Web SDK Methods and Constructors](methods-constructors) — DOM utilities, Content, User, Subscription, search options, types, and error handling
+* [User Context](user-context) — complete reference for `Context.User()`, all User methods, the User object schema, field availability, and examples
+* [Methods and Constructors](methods-constructors) — DOM utilities, Content, User, Subscription, search options, types, and error handling
 * [Examples](examples) — search, subscriptions, users, DOM, and script/style loading

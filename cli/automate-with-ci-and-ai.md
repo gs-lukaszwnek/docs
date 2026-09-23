@@ -75,12 +75,30 @@ gsds build --validate
 * Keep those commands out of the pipeline (recommended). Run them locally during development, and gate CI on `gsds build --validate` instead.
 * Run pairing on a bootstrap machine and rely on the 8-hour session, understanding it will expire.
 
+If a bootstrap machine holds sessions for more than one tenant, pass `--profile <name>` on `gsds connector test` or `gsds preview` to target a specific one without switching which profile is current — see [Authenticate](authenticate#use-multiple-tenants).
+
 ## Force the file-based credential fallback
 
-Set `GSDS_DISABLE_KEYCHAIN=1` in environments where no OS keychain is available. The CLI writes to `~/.config/gsds/credentials.json` at file mode `0600` and warns once on stderr. See [Authenticate](authenticate) for the full session-storage rules.
+Set `GSDS_DISABLE_KEYCHAIN=1` in environments where no OS keychain is available. The CLI writes to `~/.config/gsds/credentials.json` at file mode `0600` and warns once on stderr. See [Project Files](reference/project-files#in-your-user-account) for the full session-storage rules.
+
+## Control the automatic update
+
+`gsds` checks npm for a newer version roughly every 8 hours and installs it without asking, applying to the command you just ran. Set `GSDS_DISABLE_AUTO_UPDATE=1` to disable this entirely — no registry call, no install, no cache write:
+
+```sh
+export GSDS_DISABLE_AUTO_UPDATE=1
+```
+
+Set it anywhere an unattended global npm install would be unwelcome or fail:
+
+* **CI pipelines**, where the CLI version should be pinned by your lockfile or install step, not changed underneath a build.
+* **Sandboxed or offline runners** with no registry access, or a read-only `HOME`.
+* **Agent-driven invocations**, where a global install racing other work is a hazard.
+
+A failed check on its own — network error, missing `npm`, unwritable config directory — never fails your command; it is swallowed with at most a one-line warning, and your command runs on the current version. `GSDS_DISABLE_AUTO_UPDATE` is for skipping the check outright, not for handling that failure.
 
 ## Next steps
 
 * Every flag and its default in the [Command reference](reference/commands)
 * The full list of committed and generated files in [Project files](reference/project-files)
-* Session model in [Authenticate](authenticate)
+* Session model and profiles in [Authenticate](authenticate)

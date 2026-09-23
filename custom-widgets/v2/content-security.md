@@ -37,7 +37,9 @@ The platform checks for:
 | Credential exposure | Hardcoded secrets, API keys, tokens, or high-entropy strings | AWS keys, private keys, JWTs, `password = "..."` |
 
 :::tip
+
 Loading scripts from popular libraries like `cdn.jsdelivr.net`, `cdnjs.cloudflare.com`, `unpkg.com`, and `esm.sh` is allowed. Only untrusted sources are flagged.
+
 :::
 
 :::tip
@@ -81,7 +83,9 @@ Most extension code works without any changes. Here is what to keep in mind:
 | Inline `<script>` tags (widgets) | Yes | Inline scripts are allowed by the security policy |
 | Inline `<style>` tags (widgets) | Yes | Inline styles are allowed by the security policy |
 | Relative asset paths (`./styles.css`) | Yes | Standard relative paths work as expected |
-| Load from trusted libraries | Yes | `cdn.jsdelivr.net`, `cdnjs.cloudflare.com`, `unpkg.com`, `esm.sh` are allowed |
+
+| Load from trusted libraries | Yes | `cdn.jsdelivr.net`, `cdnjs.cloudflare.com`, `unpkg.com`, `esm.sh` are allowed. For a browser-native `import` with no bundler, use `esm.sh` — the others serve files as-is and often fail to load as a module. |
+
 | Load scripts from unknown domains | No | External scripts from untrusted sources are blocked |
 | Use `eval()` | No | Blocked by the Content Security Policy |
 | Use `new Function()` from strings | No | Blocked by the Content Security Policy |

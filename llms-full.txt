@@ -2539,6 +2539,91 @@ Key behavior:
 
 For the full section field list and ordering rules, see the [Widget Definition Reference](widget-schema#configsection-object).
 
+## Show Fields Conditionally
+
+A field often only makes sense once another field has a particular value. Give it a
+`visibleWhen` list and it appears only while every rule in that list passes.
+
+```jsonc
+{
+  "configuration": { // [!code focus:30]
+    "properties": [
+      {
+        "name": "course_selection",
+        "type": "select",
+        "label": "Course selection",
+        "defaultValue": "manual",
+        "options": [
+          { "value": "manual", "label": "Manual" },
+          { "value": "recent", "label": "Most recently published" }
+        ]
+      },
+      {
+        "name": "courses",
+        "type": "autocomplete",
+        "label": "Courses",
+        "multiple": true,
+        "visibleWhen": [{ "field": "course_selection", "operator": "eq", "value": "manual" }],
+        "dynamicOptions": {
+          "endpoint": { "endpoint": "https://api.example.com/courses", "method": "GET" },
+          "mapping": { "valueKey": "id", "labelKey": "title" }
+        }
+      },
+      {
+        "name": "max_courses",
+        "type": "number",
+        "label": "Maximum courses shown",
+        "defaultValue": 3,
+        "visibleWhen": [{ "field": "course_selection", "operator": "eq", "value": "recent" }]
+      }
+    ]
+  }
+}
+```
+
+Picking **Manual** shows the course picker; picking **Most recently published** replaces it
+with the maximum instead.
+
+Rules are combined with AND — a field with two rules appears only when both hold. For "any of
+these values", use one rule with `in`:
+
+```jsonc
+{ "field": "layout", "operator": "in", "value": ["grid", "carousel"] }
+```
+
+To show a field once another has been filled in at all, use `not_empty`:
+
+```jsonc
+{ "field": "courses", "operator": "not_empty" }
+```
+
+A section takes the same `visibleWhen`, which hides the whole group:
+
+```jsonc
+{
+  "sections": [
+    {
+      "name": "grid_options",
+      "label": "Grid options",
+      "visibleWhen": [{ "field": "layout", "operator": "eq", "value": "grid" }]
+    }
+  ]
+}
+```
+
+Key behavior:
+
+* Hiding a field does not clear it. Values are stored flat by field `name`, so switching the
+  condition back restores what the editor had entered, and your widget still reads every value
+  the same way with `sdk.getProps()`.
+* A hidden field is not validated, so a `required` field the editor cannot see will not block
+  them from saving. Read the fields that match the mode your widget is in.
+* A field using `dynamicOptions` only calls its API once it becomes visible.
+* A section disappears when its own rules fail, and also when every field inside it is hidden.
+
+For the full operator table, what counts as empty, and the rules rejected at publish time, see
+the [Widget Definition Reference](widget-schema#conditional-visibility).
+
 ## Populate a Dropdown from an API
 
 Instead of a static `options` array, a `select` or `autocomplete` field can load its choices from an external API using `dynamicOptions`.
@@ -3561,6 +3646,7 @@ An empty `settings: {}` object is valid — all fields take their defaults.
 | `dynamicOptions` | object | No | — | API-driven choices for `"select"` or `"autocomplete"` — see [Dynamic Options](#dynamic-options). Mutually exclusive with `options`. |
 | `multiple` | boolean | No | `false` | Allow selecting more than one value. Only for `"select"` or `"autocomplete"`. |
 | `sortable` | boolean | No | `false` | Let editors reorder selected values. Only valid for `"autocomplete"` fields with `multiple: true`; array order is preserved at runtime. |
+| `visibleWhen` | array of objects | No | — | Rules that decide whether this field is shown, based on other fields' values — see [Conditional Visibility](#conditional-visibility). |
 
 ##### Field Types
 
@@ -3602,6 +3688,7 @@ An entry in the `sections` array. A field joins a section by setting its `sectio
 | `label` | string | No | `name` | Title shown on the section header |
 | `description` | string | No | — | Help text shown under the section header |
 | `expanded` | boolean | No | `false` | When `true`, this section is the one open when the form first loads |
+| `visibleWhen` | array of objects | No | — | Rules that decide whether the whole section is shown — see [Conditional Visibility](#conditional-visibility). |
 
 ##### Section Ordering and Rendering
 
@@ -3610,6 +3697,80 @@ An entry in the `sections` array. A field joins a section by setting its `sectio
 * After the default group, sections appear in the order they are listed in `sections`, followed by any sections referenced only by a field — those in the order their first field appears.
 * The form shows one section open at a time. On load, the first `sections` entry marked `expanded` is opened; if none is marked, the first section is opened.
 * A field's `section` is presentation only. Configuration values are always stored flat, keyed by field `name`, so you can rename, reorder, or remove sections without affecting saved values.
+
+## Conditional Visibility
+
+A config field or section can declare `visibleWhen`: a list of rules evaluated against the
+values the editor has entered so far. All rules must pass for the field or section to be
+shown (AND). An absent or empty list means always visible.
+
+```jsonc
+{
+  "name": "maxCourses",
+  "type": "number",
+  "label": "Maximum courses shown",
+  "visibleWhen": [{ "field": "courseSelection", "operator": "eq", "value": "recent" }]
+}
+```
+
+### VisibilityRule Object
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `field` | string | Yes | — | `name` of another config field in the same widget |
+| `operator` | string | Yes | — | See the operator table below |
+| `value` | string, number, boolean, or array | Conditional | — | Required for every operator except `empty` and `not_empty`, which must not declare one |
+
+### Operators
+
+| Operator | Valid on | Meaning |
+|----------|----------|---------|
+| `eq` / `neq` | text, color, number, date, boolean, single-value select/autocomplete | Scalar comparison |
+| `in` / `not_in` | the above, plus multi-value fields | Scalar field: the value is one of the listed values. Multi-value field: the selection intersects the list. |
+| `contains` / `not_contains` | multi-value select/autocomplete | The selection includes this value |
+| `empty` / `not_empty` | everything except boolean | Whether the field has been filled in. Takes no `value`. |
+| `gt` / `gte` / `lt` / `lte` | number, date | Threshold. `value` is a number or an ISO date. |
+| `starts_with` / `ends_with` / `includes` | text, color | Case-insensitive substring checks |
+
+There is no regex operator. Use `rules.pattern` when you need a pattern — that validates a
+value the editor has entered, which is a different job from deciding what to show.
+
+`select` and `autocomplete` fields compare on the stored option `value`, never the label shown
+in the dropdown.
+
+Boolean fields use a real JSON boolean — `"value": true`, not `"value": "true"`.
+
+### What Counts as Empty
+
+`empty` is true for a field that is missing, `null`, an empty string, an empty list, or a
+selection with no value. It is **not** true for `false`, `0`, or `"0"` — those are values an
+editor deliberately set. This is why `not_empty` is not allowed on a boolean field: a checkbox
+always has a value. Use `eq` with `true` or `false` instead.
+
+### Behavior
+
+* **Values are kept.** Hiding a field does not clear it. Configuration values are always stored
+  flat, keyed by field `name`, so switching a condition back restores what the editor had
+  entered. Your widget receives the full configuration and decides what to read.
+* **Hidden fields skip validation.** A `required` field that is not on screen will not block the
+  editor from saving.
+* **Options load when shown.** A field using `dynamicOptions` fetches its options the first time
+  it becomes visible, so a hidden branch costs no API calls.
+* **Sections follow their fields.** A section is hidden when its own `visibleWhen` fails, and
+  also when every field inside it is hidden. If the open section is the one that just got
+  hidden, the form opens the first section still showing.
+
+### Errors Caught at Publish Time
+
+The configuration form leaves a field visible when it cannot apply a rule, so a broken rule
+would otherwise do nothing at all, without warning. Publishing therefore fails when a rule:
+
+* references a field that is not declared in the same widget, or references its own field
+* uses an operator the target field's type does not support (`eq` on a multi-value field,
+  `contains` on a single-value field, `gt` on a text field, `not_empty` on a boolean)
+* omits `value`, or supplies one for `empty` / `not_empty`
+* passes a list to an operator that compares a single value
+* compares a boolean field against a string, or a number field against a non-number
 
 ## Dynamic Options
 
@@ -5101,13 +5262,13 @@ For troubleshooting failed, stuck, or stale builds — including why a push didn
 url: >-
   https://developer-portal.gainsight.com/docs/custom-widgets/v2/registry-reference.md
 description: >-
-  Reference for the root of extensions_registry.json — the widgets, scripts, and
-  stylesheets arrays
+  Reference for the root of extensions_registry.json — the widgets, scripts,
+  stylesheets, and importMaps arrays
 ---
 
 # Registry Reference
 
-This page documents the root object of `extensions_registry.json`, the file at your repository root that declares the `widgets`, `scripts`, and `stylesheets` arrays; each entry type has its own reference page linked below.
+This page documents the root object of `extensions_registry.json`, the file at your repository root that declares the `widgets`, `scripts`, `stylesheets`, and `importMaps` arrays; each entry type has its own reference page linked below.
 
 ## Root Object
 
@@ -5116,14 +5277,16 @@ This page documents the root object of `extensions_registry.json`, the file at y
 | `widgets` | array | No | `[]` | Widget definitions — see [Widget Definition Reference](widget-schema) |
 | `scripts` | array | No | `[]` | Script definitions — see [Script Definition Reference](scripts) |
 | `stylesheets` | array | No | `[]` | Stylesheet definitions — see [Stylesheet Definition Reference](stylesheets) |
+| `importMaps` | array | No | `[]` | Shared-dependency import maps — see [Import Maps](#import-maps) below |
 
-All three arrays are optional. A registry with only widgets publishes no scripts or stylesheets; a registry with only scripts publishes no widgets. An empty array is valid and publishes nothing of that type.
+All four arrays are optional. A registry with only widgets publishes no scripts, stylesheets, or import maps; a registry with only scripts publishes no widgets. An empty array is valid and publishes nothing of that type.
 
 ```json
 {
   "widgets": [ ... ],
   "scripts": [ ... ],
-  "stylesheets": [ ... ]
+  "stylesheets": [ ... ],
+  "importMaps": [ ... ]
 }
 ```
 
@@ -5153,10 +5316,37 @@ If your repository uses the old `widget_registry.json` filename, it still works 
 ## Validation
 
 * The root must be a JSON object.
-* `widgets`, `scripts`, and `stylesheets` must be arrays if present.
+* `widgets`, `scripts`, `stylesheets`, and `importMaps` must be arrays if present.
 * Each entry follows its own schema — see the per-type reference pages.
 
 For validation errors, see [Error Codes](error-codes).
+
+## Import Maps
+
+`importMaps` declares shared module dependencies (such as a widget's framework) so the same copy can be reused across widgets on a page, instead of each widget bundling its own copy. Each entry:
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `imports` | object | Yes | — | Maps a bare module specifier (e.g. `"react"`) to an `https://` URL to load it from |
+| `scopes` | object | No | `null` | Scoped overrides of `imports` for a specific module subtree, per the browser import map spec |
+| `integrity` | object | No | `null` | Subresource-integrity hashes for entries in `imports` |
+
+```json
+{
+  "importMaps": [
+    {
+      "imports": {
+        "react": "https://esm.sh/react@19.2.0",
+        "react-dom": "https://esm.sh/react-dom@19.2.0"
+      }
+    }
+  ]
+}
+```
+
+Every URL in `imports` must be `https://` — non-HTTPS values are rejected at validation, since this is rendered directly into the page as an import map. Declaring `importMaps` makes the dependency available on the page; it does not by itself change how any widget is built — externalizing a widget's own build to use a shared import map is a separate, not-yet-shipped capability of the Developer Studio CLI.
+
+Entries from all connected repositories are concatenated, in order, into one list — they are never merged or deduplicated across repositories.
 
 ## Extension Naming
 
@@ -5202,6 +5392,7 @@ The recommended convention prefixes each name with an organization identifier:
 * [Widget Definition Reference](widget-schema) — fields for the `widgets` array
 * [Script Definition Reference](scripts) — fields for the `scripts` array
 * [Stylesheet Definition Reference](stylesheets) — fields for the `stylesheets` array
+* [Import Maps](#import-maps) — fields for the `importMaps` array
 * [Repository Layout](project-setup) — how to organize the files referenced from the registry
 
 ---
@@ -5245,7 +5436,9 @@ The platform checks for:
 | Credential exposure | Hardcoded secrets, API keys, tokens, or high-entropy strings | AWS keys, private keys, JWTs, `password = "..."` |
 
 :::tip
+
 Loading scripts from popular libraries like `cdn.jsdelivr.net`, `cdnjs.cloudflare.com`, `unpkg.com`, and `esm.sh` is allowed. Only untrusted sources are flagged.
+
 :::
 
 :::tip
@@ -5289,7 +5482,9 @@ Most extension code works without any changes. Here is what to keep in mind:
 | Inline `<script>` tags (widgets) | Yes | Inline scripts are allowed by the security policy |
 | Inline `<style>` tags (widgets) | Yes | Inline styles are allowed by the security policy |
 | Relative asset paths (`./styles.css`) | Yes | Standard relative paths work as expected |
-| Load from trusted libraries | Yes | `cdn.jsdelivr.net`, `cdnjs.cloudflare.com`, `unpkg.com`, `esm.sh` are allowed |
+
+| Load from trusted libraries | Yes | `cdn.jsdelivr.net`, `cdnjs.cloudflare.com`, `unpkg.com`, `esm.sh` are allowed. For a browser-native `import` with no bundler, use `esm.sh` — the others serve files as-is and often fail to load as a module. |
+
 | Load scripts from unknown domains | No | External scripts from untrusted sources are blocked |
 | Use `eval()` | No | Blocked by the Content Security Policy |
 | Use `new Function()` from strings | No | Blocked by the Content Security Policy |
@@ -9027,19 +9222,21 @@ The header value is a JSON object with these fields:
 | `method` | HTTP method (`GET`, `POST`, etc.) |
 | `headers` | Resolved request headers sent to the external API |
 | `query_parameters` | Resolved query parameters |
-| `authentication` | Resolved authentication configuration |
+| `authentication` | Authentication configuration, with credential fields (API keys, OAuth client secrets, JWT signing keys and claims) masked as `**********` |
 | `request_body` | Resolved request body, or `null` if none |
 | `response_body` | The response body template string, or `null` if none |
 | `response_content_type` | The response content type override, or `null` if none |
 
-**Secret values are never included.** Any field that uses {{ get\_secret('...') }} appears as the original template literal instead of the actual secret value. All other templates — such as {{ user.email }} or {{ now() }} — show their resolved values.
+**Secret values are never included.** Credential fields inside `authentication` — an API key value, an OAuth client secret, a JWT signing key, or JWT claims — always appear as `**********`, whether they hold a literal value or a {{ get\_secret('...') }} reference. The header cannot be used to verify which secret a credential field references, or to inspect its contents; the connector editor is the place to review or change a credential's actual value.
+
+Outside `authentication`, secret references behave differently: any field that uses {{ get\_secret('...') }} appears as the original template literal, because this preview is always built without access to secret values — not because that specific field is masked. All other templates — such as {{ user.email }} or {{ now() }} — show their resolved values.
 
 Use this header to verify:
 
 * Your URL and query parameters resolved correctly
-* Authentication claims (such as JWT `iss`, `iat`, `exp`) contain the expected values
+* Non-credential authentication fields — such as an API key's name and location, an OAuth token URL and scope, or a JWT's algorithm — contain the expected values
 * Headers include the right content type and authorization scheme
-* Secret references are in the right places without exposing actual credentials
+* Secret references outside `authentication` are in the right places without exposing actual credentials
 
 ::: tip
 The debug header appears on both successful and failed test responses, so you can inspect the resolved request even when the external API returns an error.
@@ -9068,7 +9265,7 @@ The debug header appears on both successful and failed test responses, so you ca
 ### Secrets and Variables issues
 
 * If a template references a Secret or Variable that does not exist, or the name is misspelled, `get_secret()` and `get_variable()` leave the original template expression unresolved in the rendered output, and that literal text is then used in the request. A missing Variable in the URL causes the URL to fail validation. A missing Secret in a header is sent to the external API as literal text, which typically returns a `401 Unauthorized` or `403 Forbidden`.
-* Click **Test Connection** and inspect the `X-Debug-Request` header. If a field shows the raw `get_secret('...')` or `get_variable('...')` text instead of a resolved value, the name did not resolve. See [Debug request header](#debug-request-header).
+* Click **Test Connection** and inspect the `X-Debug-Request` header. If a field shows the raw `get_secret('...')` or `get_variable('...')` text instead of a resolved value, the name did not resolve. See [Debug request header](#debug-request-header). This check does not work for credential fields inside `authentication` — those always show `**********` regardless of whether the reference resolved.
 * Open **Integrations** → **Developer Studio** → **Secrets and Variables** and confirm the entry exists with exactly the name you used, then compare it character-by-character with the name in `get_secret('name')` or `get_variable('name')` — names are case-sensitive.
 * If a save is rejected when creating a Secret or Variable: the name may contain hyphens, spaces, or special characters (see [Secrets and Variables](secrets/#naming-rules)); the value may be empty; or an entry with that name may already exist — edit the existing entry or choose a different name.
 * **Secret value looks wrong** — the masked display only shows the first character. Edit the secret and re-enter the value to confirm it is correct.
@@ -10312,7 +10509,7 @@ The SDK is **browser-only**: all methods that call the backend or DOM throw if r
 
 ## Availability
 
-The SDK is bundled with the community frontend and attached to `window` (or `globalThis`) when the destination app loads. There is no separate npm package; you use the global `ChWebSdk` object on pages that include the community bundle.
+The SDK is bundled with the community frontend and attached to `window` (or `globalThis`) when the community page loads. There is no separate npm package; you use the global `ChWebSdk` object on pages that include the community bundle.
 
 ```javascript
 // After the community app has loaded
@@ -10336,12 +10533,14 @@ See [Examples](examples) for more runnable snippets covering search, subscriptio
 
 * [DOM and lifecycle](methods-constructors#dom-and-lifecycle) — wait for the page or an element, bind events, load scripts and styles
 * [Content Methods](methods-constructors#content-methods) — search, like, vote, and manage articles, questions, ideas, and more
-* [User Methods](methods-constructors#user-methods) — search users and fetch by ID
+* [Context Methods](methods-constructors#context-methods) — fetch the current viewer's public user object (replaces `inSidedData.user`)
+* [User Methods](methods-constructors#user-methods) — look up, search, list, and filter community members
 * [Subscription Methods](methods-constructors#subscription-methods) — subscribe to topics and categories
 
 ## Next Steps
 
-* [Web SDK Methods and Constructors](methods-constructors) — DOM utilities, Content, User, Subscription, search options, types, and error handling
+* [User Context](user-context) — complete reference for `Context.User()`, all User methods, the User object schema, field availability, and examples
+* [Methods and Constructors](methods-constructors) — DOM utilities, Content, User, Subscription, search options, types, and error handling
 * [Examples](examples) — search, subscriptions, users, DOM, and script/style loading
 
 ---
@@ -10496,32 +10695,119 @@ Each result includes at least: `id`, `title`, `url`, `contentType`, `excerpt`, a
 
 ***
 
+## Context Methods
+
+Access the current session context — who is viewing the page and their public community profile.
+
+### `Context.User()`
+
+Fetch the current user. Always returns a `User` object — a guest resolves to the **guest projection** (`userId: null`, `username: "guest"`), never `null`. This replaces reading `inSidedData.user`.
+
+**Browser-only.** Takes no parameters. `rank`, `badges`, and `profileFields` are always hydrated. No private data (email, PM counts, login source) is ever returned — not even for the authenticated viewer.
+
+```javascript
+ChWebSdk.onReady(async () => {
+  const me = await ChWebSdk.Context.User()
+  if (me.userId === null) {
+    // Guest — show login prompt
+    return
+  }
+  console.log(me.username, me.rank?.name, me.badges)
+})
+```
+
+See [User Context](user-context) for the complete reference — full User object schema, guest projection, field availability by method, and all examples.
+
+***
+
 ## User Methods
+
+All User methods are **browser-only**.
 
 ### `User.search(query)`
 
-Search users by query string. Returns an array of user objects.
+Search users by a query string. Returns a reduced field set optimized for mention/autocomplete UIs — use `User.list()` when you need the full user object.
 
-**Browser-only.** Requires a non-empty string `query`.
+Requires a non-empty string `query`. Returns **up to 25 users** — this limit is fixed and there is no size parameter.
 
 ```javascript
-const users = await ChWebSdk.User.search('john')
+const results = await ChWebSdk.User.search('john')
+results.forEach((u) => console.log(u.userId, u.username, u.avatar))
 ```
 
 ### `User.getUsersById(ids)`
 
-Fetch users by an array of user IDs. Returns an object keyed by user ID.
+Batch-fetch up to 100 users by ID. Unresolved IDs are silently omitted — the result array may be shorter than the input.
 
-**Browser-only.** Requires a non-empty array of IDs.
+Numeric strings are accepted and coerced. Returns an array (not a map keyed by ID — iterate with `.find()` or build your own map).
 
 ```javascript
-const usersMap = await ChWebSdk.User.getUsersById(['1', '2', '3'])
-const user1 = usersMap['1']
+const users = await ChWebSdk.User.getUsersById([101, 202, 303])
+const user = users.find((u) => u.userId === 101)
+```
+
+### `User.getById(id)`
+
+Fetch a single user by ID. Returns `null` if the ID does not resolve.
+
+```javascript
+const user = await ChWebSdk.User.getById(101)
+if (user) console.log(user.username)
+```
+
+### `User.list(options?)`
+
+List and filter community members with pagination and sorting. Returns `{ totalItems, items }` — **defaults to 25 items per page (max 100)**.
+
+```javascript
+const { totalItems, items } = await ChWebSdk.User.list({
+  role: [7],
+  sort: 'lastVisit',
+  order: 'desc',
+  size: 20
+})
+```
+
+Key options: `search`, `role`, `joinDate`, `lastActivity`, `topics`, `replies`, `points`, `page`, `size`, `sort`, `order`. See [User Context](user-context#user-lookup-and-listing-methods) for the full options reference.
+
+### `User.getRecentlyActive(limit?)`
+
+Returns users sorted by last visit descending. Convenience wrapper around `list()`.
+
+```javascript
+const users = await ChWebSdk.User.getRecentlyActive(10)
+```
+
+### `User.getByRole(role, options?)`
+
+List users that hold one or more roles. `role` is a single role ID or an array (OR semantics).
+
+```javascript
+const { items } = await ChWebSdk.User.getByRole(7)
+const { items } = await ChWebSdk.User.getByRole([7, 9], { size: 50 })
 ```
 
 ### User object shape
 
-Each user includes: `id`, `url`, `name`, `avatar`, `userTitle`, `userLevel`, `badges`, `isBanned`, and optional `rank` (with `name`, `color`, `icon`, etc.).
+All User methods return objects conforming to the unified `User` model. Key fields:
+
+| Field | Type | Notes |
+|---|---|---|
+| `userId` | `number \| null` | Canonical ID. Use this in new code — `id` is a deprecated alias. |
+| `username` | `string` | Display username. |
+| `avatar` | `string` | Avatar URL, or `""` when none. |
+| `profileUrl` | `string \| null` | Relative URL to the profile page. |
+| `rank` | `Rank \| null` | Hydrated rank with display styling (always present). |
+| `badges` | `Badge[]` | Hydrated badges (always present). |
+| `profileFields` | `ProfileField[]` | Custom profile fields (always present). |
+| `isBanned` | `boolean` | |
+| `isModerator` | `boolean` | |
+| `mainRole` | `string \| null` | Role slug (e.g. `"moderator"`). |
+| `reputation` | `number \| null` | Reputation score. |
+| `topics`, `replies`, `points` | `number` | Activity counts. |
+| `joinDate` | `string` | ISO-8601 datetime (not a Unix timestamp). |
+
+See [User Context](user-context#user-object-shape) for every field, type, and availability table.
 
 ***
 
@@ -10533,8 +10819,8 @@ All subscription methods are **browser-only** and require valid identifiers.
 
 | Method | Description |
 |--------|-------------|
-| `Subscription.subscribeTopic(publicId)` | Subscribe to a topic by its **public** ID. |
-| `Subscription.unsubscribeTopic(publicId)` | Unsubscribe from a topic. |
+| `Subscription.subscribeToTopic(publicId)` | Subscribe to a topic by its **public** ID. |
+| `Subscription.unsubscribeFromTopic(publicId)` | Unsubscribe from a topic. |
 | `Subscription.getTopicSubscriptionStatus(publicId)` | Returns `true` if the current user is subscribed. |
 
 ### Categories
@@ -10546,7 +10832,7 @@ All subscription methods are **browser-only** and require valid identifiers.
 | `Subscription.getCategorySubscriptionStatus(categoryId)` | Returns `true` if the current user is subscribed to the category. |
 
 ```javascript
-await ChWebSdk.Subscription.subscribeTopic('topic-123')
+await ChWebSdk.Subscription.subscribeToTopic('topic-123')
 const isSubscribed = await ChWebSdk.Subscription.getTopicSubscriptionStatus('topic-123')
 
 await ChWebSdk.Subscription.subscribeToCategory('42')
@@ -10582,8 +10868,467 @@ Common cases:
 
 ## Next Steps
 
+* [User Context](user-context) — complete reference for `Context.User()`, all User methods, User object schema, and examples
 * [Examples](examples) — runnable code covering search, subscriptions, users, and DOM interactions
 * [Web SDK](overview) — how the SDK is loaded and when to use each method.
+
+---
+
+---
+url: https://developer-portal.gainsight.com/docs/sdk/web-sdk/user-context.md
+description: >-
+  Complete reference for user context in the ChWebSdk — fetching the current
+  viewer, looking up community members, the full User object schema, guest
+  handling, and field availability by method.
+---
+
+# User Context
+
+This page documents the `ChWebSdk` user-context API: fetching the current viewer with `ChWebSdk.Context.User()` and looking up community members with the `ChWebSdk.User.*` methods. All run as the visiting user, authorized by the community session cookie.
+
+::: tip
+Prefer these SDK methods over a Connector for user data — they use the browser session and need no server-side secrets.
+:::
+
+## Context: Current Viewer
+
+### `Context.User()`
+
+Fetches the current user for the active session. This is the direct replacement for reading `inSidedData.user`.
+
+**Returns:** `Promise<User>`
+
+* Resolves to a `User` object for an authenticated visitor.
+* For an unauthenticated (guest) visitor, resolves to the **guest projection** — a `User` object with `userId: null` and `username: "guest"`. It is **never `null`**; branch on `userId` to tell guest from member.
+* Throws if called outside a browser environment or if the network request fails.
+
+Takes no parameters. `rank`, `badges`, and `profileFields` are always hydrated on every response.
+
+::: warning No private data on the current viewer
+`Context.User()` is readable by any script on the community page, so it never exposes private data — **even for the authenticated viewer**. Email address, private-message counts, subscription count, and login/registration source are not included in the response.
+:::
+
+**Checking authenticated vs. guest:** branch on `userId`, not on `null`.
+
+```javascript
+ChWebSdk.onReady(async () => {
+  const me = await ChWebSdk.Context.User()
+
+  if (me.userId === null) {
+    // Guest — show a login prompt or public-only content
+    return
+  }
+
+  // Authenticated — personalize the UI
+  console.log(me.username)        // 'janedoe'
+  console.log(me.userId)          // 101
+  console.log(me.rank?.name)      // 'Regular'
+  console.log(me.badges)          // [{ id: 100, title: 'First post', url: '/badge/first-post' }]
+  console.log(me.profileFields)   // [{ id: 3, title: 'Seniority', value: 'senior', ... }]
+})
+```
+
+***
+
+## User: Lookup and Listing Methods
+
+All methods below are **browser-only** and operate on the community user directory. They return the public `User` shape — no private data (email, private-message counts, login source) is exposed by any of them.
+
+### `User.getById(id)`
+
+Fetch a single user by numeric ID.
+
+**Returns:** `Promise<User | null>` — resolves to `null` if the ID does not resolve.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `id` | `number \| string` | User ID. Numeric strings are accepted and coerced. |
+
+```javascript
+const user = await ChWebSdk.User.getById(101)
+if (user) {
+  console.log(user.username, user.rank?.name)
+}
+```
+
+### `User.getUsersById(ids)`
+
+Fetch multiple users by an array of IDs in one request (batch lookup). Unresolved IDs are silently omitted — the result array may be shorter than the input.
+
+Up to 100 IDs per request. IDs beyond the hundredth are dropped, not refused.
+
+**Returns:** `Promise<User[]>` — array of resolved users. Order is **not guaranteed** to match the input; match results by `userId` (e.g. with `.find()`), not by position. Each item is a `User` object.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `ids` | `Array<number \| string>` | User IDs to fetch. Numeric strings are accepted. |
+
+```javascript
+const users = await ChWebSdk.User.getUsersById([101, 202, 303])
+// users.length may be less than 3 if any ID did not resolve
+users.forEach((u) => console.log(u.userId, u.username))
+```
+
+### `User.list(options?)`
+
+List and filter community members with pagination, sorting, and filtering. Returns a paginated result.
+
+**Returns:** `Promise<{ totalItems: number, items: User[] }>`
+
+* `totalItems`: total number of users matching the filters (before pagination).
+* `items`: users on the requested page. **Defaults to 25 per page (max 100)** when `size` is omitted.
+* Every row is a fully hydrated `User` (`rank`, `badges`, `profileFields` included), so a full page of 100 is a heavier payload — request only the `size` you need.
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `search` | `string` | — | Substring match on username. An authenticated caller may also pass an email address here; a guest who does gets a 403 (guests can still search by username). |
+| `role` | `number[]` | — | Filter by main role ID(s). OR semantics. |
+| `joinDate` | `DateFilter` | — | Filter on registration date. |
+| `lastActivity` | `DateFilter` | — | Filter on last activity date. |
+| `lastVisit` | `DateFilter` | — | Filter on last visit (login) date. |
+| `topics` | `NumberFilter` | — | Filter on topics created. |
+| `replies` | `NumberFilter` | — | Filter on replies created. |
+| `points` | `NumberFilter` | — | Filter on points. |
+| `page` | `number` | `1` | 1-indexed page number. |
+| `size` | `number` | `25` | Page size (1–100). |
+| `sort` | `UserSortField` | `'userId'` | Sort field. |
+| `order` | `'asc' \| 'desc'` | `'desc'` | Sort direction. |
+
+Role, badge, and profile-field IDs used in the filters and examples below are **specific to each community**. Find your community's values in its admin settings (the Roles, Badges, and Profile Fields sections) instead of reusing the sample IDs.
+
+**`DateFilter`** — ISO-8601 datetime, ISO-8601 duration relative to now (e.g. `'P3D'` = last 72 h), or `{ from?, to? }` range:
+
+```javascript
+// Users who joined in the last 7 days
+const { items } = await ChWebSdk.User.list({ joinDate: 'P7D' })
+
+// Users who joined in a specific range
+const { items } = await ChWebSdk.User.list({
+  joinDate: { from: '2024-01-01T00:00:00Z', to: '2024-12-31T23:59:59Z' }
+})
+```
+
+**`NumberFilter`** — exact integer or `{ eq?, gt?, gte?, lt?, lte? }` range:
+
+```javascript
+// Users with 10 or more topics
+const { items } = await ChWebSdk.User.list({ topics: { gte: 10 } })
+```
+
+**`UserSortField`** values: `'userId'` | `'username'` | `'replies'` | `'topics'` | `'points'` | `'lastVisit'` | `'joinDate'` | `'lastActivity'`
+
+**Example — list moderators sorted by last visit:**
+
+```javascript
+ChWebSdk.onReady(async () => {
+  const { totalItems, items } = await ChWebSdk.User.list({
+    role: [7],
+    sort: 'lastVisit',
+    order: 'desc',
+    size: 20
+  })
+  console.log(`${items.length} of ${totalItems} moderators`)
+  items.forEach((u) => console.log(u.username, u.lastVisit))
+})
+```
+
+**Example — paginate through all users:**
+
+```javascript
+ChWebSdk.onReady(async () => {
+  const size = 100
+  let page = 1
+  let total = Infinity
+
+  while ((page - 1) * size < total) {
+    const result = await ChWebSdk.User.list({ page, size })
+    total = result.totalItems
+    result.items.forEach((u) => console.log(u.userId, u.username))
+    page++
+  }
+})
+```
+
+### `User.getRecentlyActive(limit?)`
+
+Convenience wrapper around `list()`. Returns users sorted by `lastVisit` descending.
+
+**Returns:** `Promise<User[]>`
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `limit` | `number` | `10` | Maximum users to return. |
+
+```javascript
+const recentUsers = await ChWebSdk.User.getRecentlyActive(5)
+recentUsers.forEach((u) => console.log(u.username, u.lastVisit))
+```
+
+### `User.getByRole(role, options?)`
+
+List users that hold one or more specified roles.
+
+**Returns:** `Promise<{ totalItems: number, items: User[] }>` — **defaults to 25 per page (max 100)**, same as `list()`.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `role` | `number \| number[]` | Role ID or array of IDs. OR semantics. |
+| `options` | `object` | Same pagination and sort options as `list()` (minus `role`). |
+
+```javascript
+// Users with role id 7, first page
+const { totalItems, items } = await ChWebSdk.User.getByRole(7, { size: 50 })
+
+// Users with any of these roles
+const { items } = await ChWebSdk.User.getByRole([7, 9])
+```
+
+### `User.search(query)`
+
+Search users by a query string. Returns a reduced field set optimized for mention/autocomplete UIs — use `User.list()` when you need the full user object.
+
+**Requires an authenticated session** — a guest calling `search()` receives a 403 (this is a different endpoint from `list()`, and it is not open to guests at all).
+
+**Returns:** `Promise<UserSearchResult[]>` — **up to 25 users**. This limit is fixed; `search()` takes no size parameter.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `query` | `string` | Non-empty search query |
+
+**`UserSearchResult` object shape:**
+
+| Field | Type | Notes |
+|---|---|---|
+| `userId` | `number` | Canonical user ID. |
+| `username` | `string` | Display username. |
+| `profileUrl` | `string \| null` | Relative URL to the profile page. |
+| `avatar` | `string` | Avatar URL, or `""` when none. |
+| `userTitle` | `string` | Display title. |
+| `reputation` | `number \| null` | Reputation score. |
+| `isBanned` | `boolean` | `true` if the user holds the banned role. |
+| `badges` | `Badge[]` | Hydrated badges, **without `id`**. |
+| `rank` | `Rank \| null` | Hydrated rank, **without `id`**. |
+
+```javascript
+const results = await ChWebSdk.User.search('jane')
+results.forEach((u) => console.log(u.userId, u.username, u.avatar))
+```
+
+***
+
+## User Object Shape
+
+All methods above return objects conforming to the unified `User` model.
+
+### Core identity fields
+
+| Field | Type | Notes |
+|---|---|---|
+| `userId` | `number \| null` | Canonical user ID. `null` only on the guest projection. Use this in new code. |
+| `id` | `number \| null` | **Deprecated** mirror of `userId`. Kept for backward compatibility; migrate to `userId`. |
+| `username` | `string` | Display username. `"guest"` on the guest projection. |
+| `name` | `string` | **Deprecated** alias of `username`. |
+| `firstName` | `string \| null` | Often `null` due to visibility settings. |
+| `lastName` | `string \| null` | |
+| `avatar` | `string` | Avatar URL, or empty string `""` when none. |
+| `profileUrl` | `string \| null` | Relative URL to the user's profile page (e.g. `"/user/janedoe"`). |
+| `signature` | `string \| null` | User signature. |
+| `userTitle` | `string` | Display title (custom title or rank name; empty string if hidden). |
+| `companyId` | `string \| null` | Company identifier. |
+
+### Role and moderation fields
+
+| Field | Type | Notes |
+|---|---|---|
+| `isBanned` | `boolean` | `true` if the user holds the banned role. |
+| `isModerator` | `boolean` | `true` if the user holds any moderator role. |
+| `role` | `number \| null` | Main role ID as an integer. |
+| `mainRole` | `string \| null` | Main role slug (e.g. `"moderator"`, `"roles.guest"`). |
+| `customRoles` | `number[]` | Custom role IDs. |
+
+### Rank fields
+
+| Field | Type | Notes |
+|---|---|---|
+| `rankId` | `number \| null` | Rank ID. `null` when the user has no rank. |
+| `rank` | `Rank \| null` | Hydrated rank with display styling. The property is always present; the value is `null` when the user has no rank. |
+
+**`Rank` object shape:**
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | `number` | Rank ID |
+| `name` | `string` | Rank display name (e.g. `"Regular"`) |
+| `color` | `string \| null` | Hex color for the rank name (e.g. `"#3366ff"`) |
+| `isBold` | `boolean` | Whether the rank name should be bold |
+| `isItalic` | `boolean` | Whether the rank name should be italic |
+| `isUnderline` | `boolean` | Whether the rank name should be underlined |
+| `icon` | `string \| null` | Icon identifier |
+| `iconUrl` | `string \| null` | URL to the rank icon image |
+| `avatarIcon` | `string \| null` | Avatar icon identifier |
+| `avatarIconUrl` | `string \| null` | URL to the avatar icon image |
+
+### Badge fields
+
+| Field | Type | Notes |
+|---|---|---|
+| `badges` | `Badge[]` | Hydrated badges. Always present. Unresolvable badge IDs are dropped — the array only contains objects. |
+
+**`Badge` object shape:**
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | `number` | Badge ID |
+| `title` | `string` | Badge display name (e.g. `"First post"`) |
+| `url` | `string \| null` | Relative URL to the badge page (e.g. `"/badge/first-post"`) |
+
+### Group and profile fields
+
+| Field | Type | Notes |
+|---|---|---|
+| `groups` | `number[]` | Group IDs the user belongs to. |
+| `profileFields` | `ProfileField[]` | Structured custom profile fields. Always hydrated. |
+
+**`ProfileField` object shape:**
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | `number` | Profile field ID |
+| `title` | `string` | Profile field label (e.g. `"Seniority"`) |
+| `type` | `string` | Field type: `'text'`, `'textarea'`, `'select'`, `'radio'`, `'check'`, `'multiselect'`, `'date'`, etc. |
+| `value` | `string \| number \| boolean \| string[] \| object \| null` | The user's value for this field. `null` when unset. |
+| `visibility` | `number` | Visibility level of the field, as an integer. |
+
+### Activity and engagement fields
+
+| Field | Type | Notes |
+|---|---|---|
+| `topics` | `number` | Topics created. |
+| `replies` | `number` | Replies created. |
+| `points` | `number` | Points. |
+| `solved` | `number` | Best-answer / solved count. |
+| `reputation` | `number \| null` | Reputation score. `null` if the reputation feature is disabled. |
+| `likesReceived` | `number` | Likes received. |
+| `likesGiven` | `number` | Likes given. |
+| `followers` | `number` | Follower count. |
+| `following` | `number` | Following count. |
+
+### Date fields
+
+| Field | Type | Notes |
+|---|---|---|
+| `joinDate` | `string` | Registration timestamp as ISO-8601 datetime (e.g. `"2022-04-12T09:23:18Z"`). **Not** a Unix timestamp — the legacy `inSidedData.user.joindate` was a Unix int; this is a string. |
+| `lastActivity` | `string \| null` | Last activity timestamp (ISO-8601). May be `null` when no activity has been recorded. |
+| `lastVisit` | `string \| null` | Last visit/login timestamp (ISO-8601). |
+
+::: info No private fields
+The `User` object never carries private data — no email address, private-message counts, subscription count, login/registration source, or email-campaign opt-in. These are stripped on the server for every method, including `Context.User()` for the authenticated viewer. Obtain private data server-side through a Connector if a widget genuinely needs it.
+:::
+
+***
+
+## Guest Handling
+
+When an unauthenticated visitor calls `ChWebSdk.Context.User()`, it resolves to the **guest projection** — a `User` object with `userId: null`, `username: "guest"`, and zeroed counts. It is never `null`, so always branch on `me.userId === null` before treating the viewer as a member.
+
+For `ChWebSdk.User.list()` and related methods, guests get the public field set. Email-based `search` requires an authenticated session (guests receive a 403).
+
+::: warning Private communities
+On a **private community**, unauthenticated requests are redirected to the login page instead of returning data, so the SDK call rejects rather than resolving. Wrap calls in `try/catch` and treat a rejection as "not signed in."
+:::
+
+***
+
+## Field Availability by Method
+
+`User.search()` returns a reduced set optimized for autocomplete. Every other method — `Context.User()`, `getById()`, `getUsersById()`, `list()`, `getByRole()`, `getRecentlyActive()` — returns the full public `User` shape. No method exposes private data.
+
+| Field group | `Context.User()` | Other `User.*` lookups | `search()` |
+|---|---|---|---|
+| Base scalars (`userId`, `username`, `avatar`, …) | ✅ | ✅ | Partial |
+| `rank` | ✅ | ✅ | ✅ (without `id`) |
+| `badges` | ✅ | ✅ | ✅ (without `id`) |
+| `profileFields` | ✅ | ✅ | ❌ |
+| Private data (email, PM counts, subscriptions, login/register source, email-campaign opt-in) | ❌ | ❌ | ❌ |
+
+***
+
+## Legacy Field Migration
+
+If you are migrating code that reads `inSidedData.user`, use this table to find the canonical field name:
+
+| Legacy field | Canonical field |
+|---|---|
+| `userid` (int) | `userId` |
+| `name` | `username` |
+| `url` | `profileUrl` |
+| `userLevel` | `reputation` |
+| `rankName`, `rankIcon` | `rank.name`, `rank.iconUrl` |
+| `topicsCount` | `topics` |
+| `repliesCount` | `replies` |
+| `solvedCount` | `solved` |
+| `likes` | `likesReceived` |
+| `likes_given` | `likesGiven` |
+| `joindate` (Unix int) | `joinDate` (ISO-8601 string — **different type**) |
+
+Legacy `inSidedData.user` fields carrying private data — `email`, `pmUnreadCount`, `pmTotalCount`, `subscriptions`, `loginSource`, `registerSource` — have **no canonical equivalent**. They are not exposed by any SDK method; read them server-side through a Connector if required.
+
+::: warning joinDate type change
+`inSidedData.user.joindate` was a Unix timestamp (integer). The canonical `joinDate` is an ISO-8601 datetime **string**. If you compare or format dates, update your parsing logic.
+:::
+
+***
+
+## Error Handling
+
+All methods throw on failure. Wrap calls in `try/catch`:
+
+```javascript
+ChWebSdk.onReady(async () => {
+  try {
+    const me = await ChWebSdk.Context.User()
+    if (me.userId === null) {
+      // Guest — handle gracefully
+      return
+    }
+    // Use me.username, me.rank, etc.
+  } catch (err) {
+    console.error('Failed to fetch user context:', err.message)
+  }
+})
+```
+
+Common error conditions:
+
+| Scenario | Cause |
+|---|---|
+| `"Context.User can only be called in a browser environment"` | Called outside a browser (e.g. during SSR or in Node). |
+| HTTP 400 | Invalid filter operator, an unsupported `sort` field (e.g. `sort=email`), or an unsupported filter passed to `list()`. |
+| HTTP 403 | A guest called `User.search()` (authenticated-only), or passed an email-address term to `list({ search })`. Guest username search via `list()` is allowed. |
+| HTTP 5xx | A server error occurred. Retry after a brief delay. |
+| Rejected call (private community) | Unauthenticated requests are redirected to a login page instead of returning data; catch it and treat as "not signed in." |
+
+The SDK surfaces these as a rejected promise (a thrown `Error`), **not** as a structured status code you can switch on — the "Scenario" column describes the underlying cause, not a machine-readable field. Branch on whether the call rejected, and inspect `err.message` for detail; there is no reliable `err.status` to implement per-code handling.
+
+***
+
+## Next Steps
+
+* [Examples](examples) — runnable, copy-paste code for `Context.User()` and the `User.*` methods
+* [Methods and Constructors](methods-constructors) — full reference for all SDK namespaces
+* [Web SDK](overview) — availability and quick start
+* [Passing User Context](/connectors/passing-user-context) — use server-side template variables when building Connectors that need the viewer's identity
+
+QUICK REFERENCE — user context:
+
+* Context.User() takes no arguments and always returns a User object, never null. A guest resolves to the guest projection (userId: null, username: "guest"). Branch on me.userId === null, not on me === null.
+* No method exposes private data. email, pmUnread, pmTotal, subscriptions, loginSource, registerSource, and emailCampaignNotification are stripped server-side for every method, including Context.User() for the authenticated viewer. There is no getByEmail() method, no email filter parameter, and no email sort field. (A logged-in caller may still pass an email-shaped term to list({ search }); a guest doing so gets HTTP 403.)
+* rank, badges, and profileFields are always hydrated on Context.User() and on every User lookup except search().
+* User.getById(id) and User.getUsersById(ids) share one transport and return the identical full User shape. getById resolves null for a missing id; getUsersById silently omits unresolved ids and accepts up to 100 ids.
+* User.list(options) returns totalItems plus an items array; defaults are page 1 and size 25, with a max size of 100. getByRole() and getRecentlyActive() are thin wrappers over list(). A guest passing an email-address term to list({ search }) gets HTTP 403; username search works for guests.
+* User.search(query) returns up to 25 users (fixed, no size parameter) with a reduced field set for autocomplete UIs: no profileFields, and rank and badges carry no id. Use list() when you need the full object.
+* userId is canonical; id, name, and userLevel are deprecated aliases. joinDate is an ISO-8601 string, not a Unix timestamp.
+* All methods are browser-only and throw when no browser window is present.
 
 ---
 
@@ -10640,9 +11385,61 @@ ChWebSdk.onReady(async () => {
 
 ```javascript
 ChWebSdk.onReady(async () => {
-  await ChWebSdk.Subscription.subscribeTopic('topic-abc')
+  await ChWebSdk.Subscription.subscribeToTopic('topic-abc')
   const isSubscribed = await ChWebSdk.Subscription.getTopicSubscriptionStatus('topic-abc')
   console.log(isSubscribed) // true
+})
+```
+
+## Get the current user (viewer context)
+
+```javascript
+ChWebSdk.onReady(async () => {
+  const me = await ChWebSdk.Context.User()
+
+  if (me.userId === null) {
+    // Guest (guest projection) — show login prompt or public-only content
+    console.log('Not logged in')
+    return
+  }
+
+  // Authenticated viewer
+  console.log(me.username)     // 'janedoe'
+  console.log(me.userId)       // 101
+  console.log(me.rank?.name)   // 'Regular'
+  console.log(me.badges)       // [{ id: 100, title: 'First post', url: '/badge/first-post' }]
+})
+```
+
+## Show the current user's badges
+
+```javascript
+ChWebSdk.onReady(async () => {
+  const me = await ChWebSdk.Context.User()
+  if (me.userId === null || me.badges.length === 0) return
+
+  const list = document.createElement('ul')
+  me.badges.forEach((badge) => {
+    const li = document.createElement('li')
+    li.textContent = badge.title
+    list.appendChild(li)
+  })
+  document.getElementById('badges')?.appendChild(list)
+})
+```
+
+## Personalize based on profile fields
+
+```javascript
+ChWebSdk.onReady(async () => {
+  const me = await ChWebSdk.Context.User()
+  if (me.userId === null) return
+
+  // Find a profile field by ID (field IDs are specific to your community)
+  const seniority = me.profileFields.find((f) => f.id === 3)
+  if (seniority?.value === 'senior') {
+    document.getElementById('advanced-content')?.removeAttribute('hidden')
+  }
 })
 ```
 
@@ -10650,12 +11447,23 @@ ChWebSdk.onReady(async () => {
 
 ```javascript
 ChWebSdk.onReady(async () => {
-  const ids = ['1', '2', '3']
-  const usersMap = await ChWebSdk.User.getUsersById(ids)
-  ids.forEach((id) => {
-    const u = usersMap[id]
-    if (u) console.log(u.name, u.avatar)
+  const users = await ChWebSdk.User.getUsersById([1, 2, 3])
+  users.forEach((u) => console.log(u.userId, u.username, u.avatar))
+})
+```
+
+## List moderators
+
+```javascript
+ChWebSdk.onReady(async () => {
+  const { totalItems, items } = await ChWebSdk.User.list({
+    role: [7], // role IDs are specific to your community
+    sort: 'lastVisit',
+    order: 'desc',
+    size: 10
   })
+  console.log(`${items.length} of ${totalItems} moderators`)
+  items.forEach((u) => console.log(u.username, u.rank?.name))
 })
 ```
 
@@ -10681,7 +11489,8 @@ ChWebSdk.loadScript('https://example.com/widget.js', () => {
 
 ## Next Steps
 
-* [Web SDK Methods and Constructors](methods-constructors) — DOM utilities, Content, User, Subscription methods, and error handling
+* [User Context](user-context) — complete reference for `Context.User()`, all User methods, and the User object schema
+* [Methods and Constructors](methods-constructors) — DOM utilities, Content, User, Subscription methods, and error handling
 * [Web SDK](overview) — how the SDK is loaded and when to use each API
 
 ---
@@ -10706,6 +11515,7 @@ Distributed as `@gainsight-hub/developer-studio-cli` on npm. Requires Node.js 18
 | Install `gsds` and preview your first widget end-to-end | [Get started](getting-started) |
 | Pair a session with your community | [Authenticate](authenticate) |
 | Run a Connector against your tenant from the CLI | [Test Connectors](test-connectors) |
+| Load one shared copy of a dependency across widgets | [Share Dependencies Across Widgets](share-dependencies) |
 | Register sitewide scripts and stylesheets | [Manage scripts and stylesheets](manage-scripts-and-styles) |
 | Drive `gsds` from CI or an AI agent | [Automate with CI and AI](automate-with-ci-and-ai) |
 | Look up a command, flag, or exit code | [Command reference](reference/commands) |
@@ -10880,11 +11690,20 @@ gsds logout
 
 Run this before handing a shared workstation to another developer, or when switching between tenants.
 
+## Use multiple tenants
+
+Each community you pair with is a separate **tenant**. Logging into a second tenant does not replace your first session. Each `gsds login` keeps its own **profile**, keyed by tenant, and whichever one you just logged into becomes current — every other command uses the current profile automatically.
+
+```sh
+gsds profile              # list stored profiles, marks the current one
+gsds profile use <name>   # switch which one is current
+```
+
+Pass `--profile <name>` on `gsds login`, `gsds preview`, `gsds logout`, or `gsds connector test` when you want to name a profile explicitly — for example logging into the same tenant twice under different names — or target a profile other than the current one for a single command without switching it.
+
 ## Where the session is stored
 
-`gsds` writes the session token to your OS keychain — macOS Keychain, Windows Credential Store, or Linux Secret Service / keyutils — under service `gainsight-developer-studio-cli`, account `default`.
-
-If the keychain is unavailable (no supported provider, headless CI, or a keychain error), `gsds` falls back to `~/.config/gsds/credentials.json` at file mode `0600` and prints a one-time warning on stderr. You can force the file fallback by setting `GSDS_DISABLE_KEYCHAIN=1`.
+`gsds` writes the session token to your OS keychain, one account per profile, with a file-based fallback when no keychain is available. See [Project Files](reference/project-files#in-your-user-account) for the full storage rules and paths.
 
 ## Commands that require a session
 
@@ -10974,6 +11793,70 @@ Use the capture directory to compare runs across changes, share reproduction cas
 * Drive `gsds connector test --json` from CI or an AI agent in [Automate with CI and AI](automate-with-ci-and-ai)
 * Look up every flag in the [Command reference](reference/commands)
 * Review the Connector data model in [Connectors](/connectors/)
+
+---
+
+---
+url: https://developer-portal.gainsight.com/docs/cli/share-dependencies.md
+description: >-
+  Let widgets on the same page share one copy of a common dependency instead of
+  each bundling its own, using the Developer Studio CLI's automatic
+  deduplication.
+---
+
+# Share Dependencies Across Widgets
+
+Use this guide when two or more widgets in your project depend on the same package — for example a shared UI library — and you want the community to load one copy instead of one per widget.
+
+## Prerequisites
+
+* Two or more widgets under `widgets/` that declare the same package in `package.json` `dependencies`
+
+## Share a dependency between widgets
+
+Add the package as a normal dependency to each widget that needs it, then rebuild:
+
+```sh
+gsds build
+```
+
+Any package declared in two or more widgets' `dependencies` is **shared**. `gsds build` externalizes it out of those widgets' bundles automatically — no flag, no extra step. `extensions_registry.json` gets an `importMaps` entry pointing the shared package at its resolved version, so widgets on the same community page load one copy instead of one apiece.
+
+A package only one widget uses stays bundled in that widget; nothing changes until a second widget declares the same dependency.
+
+`devDependencies` never participate — build-time-only packages never reach the browser.
+
+## Exclude a package from deduplication
+
+Some packages break when served as a single shared copy — most commonly a CSS-in-JS library whose independently built copies don't share a class-name registry, causing style collisions with no build-time error. Exclude a package or an entire scope in `gsds.json`:
+
+```json
+{ "dedupe": { "exclude": ["@angular/*", "styled-components"] } }
+```
+
+A trailing `/*` excludes an entire scope. There is no single flag to turn deduplication off project-wide — `dedupe.exclude` is the only opt-out, by design: deduplication only ever activates for a package two or more widgets actually declare, so excluding the specific packages you don't want shared has the same effect.
+
+`gsds init` seeds new projects with `@angular/*` excluded, and backfills it into any existing `gsds.json` that predates this feature and has no `dedupe` key at all. Angular packages served raw from a module CDN skip the Angular Linker and break at runtime — Angular widgets need their `@angular/*` packages bundled, not shared. Non-Angular dependencies that two Angular widgets happen to share (`rxjs`, `tslib`, or any third-party library) still deduplicate normally.
+
+## If two widgets need different versions
+
+If two widgets share a dependency but resolve it to different installed versions, `gsds build` fails and names every widget/version pair — there is one import map entry per registry, so one version has to win.
+
+**Recover:** Align the versions across the affected widgets, or remove the dependency from one of them, then re-run `gsds build`.
+
+## If a widget's build file can't be patched automatically
+
+`gsds build` makes externalization take effect by patching the widget's build config in place: the `externalPackages` array in `vite.config.ts`, or `architect.build.options.externalDependencies` in `angular.json` for Angular widgets. Nothing else in either file is touched.
+
+A widget scaffolded before this feature existed has no `externalPackages` declaration yet — `gsds build` migrates it into the current shape automatically the first time that widget actually shares a dependency with another. This only fails, with a warning naming the widget, when the file's shape can't be confidently patched — a custom `rollupOptions`, or a build block laid out differently than the standard template.
+
+**Recover:** Copy the externals block from a freshly scaffolded widget's `vite.config.ts` into the named widget's file.
+
+## Next steps
+
+* Flags and exit behavior for `gsds build` in the [Command Reference](reference/commands#gsds-build)
+* Which files `gsds build` patches in [Project Files](reference/project-files)
+* Error text for version conflicts and patch failures in [Troubleshooting](reference/troubleshooting)
 
 ---
 
@@ -11146,15 +12029,33 @@ gsds build --validate
 * Keep those commands out of the pipeline (recommended). Run them locally during development, and gate CI on `gsds build --validate` instead.
 * Run pairing on a bootstrap machine and rely on the 8-hour session, understanding it will expire.
 
+If a bootstrap machine holds sessions for more than one tenant, pass `--profile <name>` on `gsds connector test` or `gsds preview` to target a specific one without switching which profile is current — see [Authenticate](authenticate#use-multiple-tenants).
+
 ## Force the file-based credential fallback
 
-Set `GSDS_DISABLE_KEYCHAIN=1` in environments where no OS keychain is available. The CLI writes to `~/.config/gsds/credentials.json` at file mode `0600` and warns once on stderr. See [Authenticate](authenticate) for the full session-storage rules.
+Set `GSDS_DISABLE_KEYCHAIN=1` in environments where no OS keychain is available. The CLI writes to `~/.config/gsds/credentials.json` at file mode `0600` and warns once on stderr. See [Project Files](reference/project-files#in-your-user-account) for the full session-storage rules.
+
+## Control the automatic update
+
+`gsds` checks npm for a newer version roughly every 8 hours and installs it without asking, applying to the command you just ran. Set `GSDS_DISABLE_AUTO_UPDATE=1` to disable this entirely — no registry call, no install, no cache write:
+
+```sh
+export GSDS_DISABLE_AUTO_UPDATE=1
+```
+
+Set it anywhere an unattended global npm install would be unwelcome or fail:
+
+* **CI pipelines**, where the CLI version should be pinned by your lockfile or install step, not changed underneath a build.
+* **Sandboxed or offline runners** with no registry access, or a read-only `HOME`.
+* **Agent-driven invocations**, where a global install racing other work is a hazard.
+
+A failed check on its own — network error, missing `npm`, unwritable config directory — never fails your command; it is swallowed with at most a one-line warning, and your command runs on the current version. `GSDS_DISABLE_AUTO_UPDATE` is for skipping the check outright, not for handling that failure.
 
 ## Next steps
 
 * Every flag and its default in the [Command reference](reference/commands)
 * The full list of committed and generated files in [Project files](reference/project-files)
-* Session model in [Authenticate](authenticate)
+* Session model and profiles in [Authenticate](authenticate)
 
 ---
 
@@ -11165,15 +12066,15 @@ description: Every Developer Studio CLI command, its flags, and its exit behavio
 
 # Command Reference
 
-Documents every `gsds` subcommand at version `1.2.0`. Every command exits `0` on success and `1` on any failure. Only `gsds preview` and `gsds connector test` require an active session.
+Documents every `gsds` subcommand at version `1.7.1`. Every command exits `0` on success and `1` on any failure. Only `gsds preview` and `gsds connector test` require an active session.
 
 ## `gsds init`
 
-Scaffolds a new project, or backfills missing files into an existing widget project. Writes only whatever's missing — `gsds.json`, `extensions_registry.json`, `connectors_registry.json`, `AGENTS.md`, `README.md`, and a `.gitignore` that excludes `.gsds/` — and never overwrites a file it finds.
+Scaffolds a new project, or backfills missing files into an existing widget project. Writes only whatever's missing — `gsds.json`, `extensions_registry.json`, `connectors_registry.json`, `AGENTS.md`, `README.md`, and a `.gitignore` that excludes `.gsds/` — and never overwrites a file it finds. A `gsds.json` that predates shared-dependency deduplication (no `dedupe` key at all) gets `@angular/*` backfilled into its exclude list automatically; a `gsds.json` that already has a `dedupe` key, even an empty one, is left untouched.
 
 | Argument | Required | Description |
 |---|---|---|
-| `<name>` | Yes | Directory to create or reuse |
+| `<name>` | Yes | Directory to create or reuse. Pass `.` to scaffold the current directory in place — the project name falls back to the directory's own name |
 | `--force` | No | Allow scaffolding into a non-empty directory that isn't recognized as an existing widget project (see below) |
 
 ### When you need `--force` — and when you don't
@@ -11191,22 +12092,35 @@ This covers the common case of an existing repo: one cloned or forked from the [
 
 ## `gsds login`
 
-Redeems a pairing code, reports the current session, or does nothing when no arguments are provided.
+Redeems a pairing code, reports the current session, or does nothing when no arguments are provided. Each tenant you log into is kept as its own profile; the one you just logged into becomes current.
 
 | Argument | Description |
 |---|---|
 | `<pairing_code>` | Redeem a pairing code from **Integrations → Developer Studio → CLI Access** in the community. Codes expire 1 minute after issue |
 | `--status` | Print the current session's tenant binding and validity |
+| `--profile <name>` | Store the resulting session under an explicit profile name instead of the tenant-derived default |
 
 The resulting session lasts 8 hours and is tenant-scoped. There is no refresh flow.
 
 ## `gsds logout`
 
-Clears the stored session. No flags.
+Clears the stored session for the current profile. No flags besides `--profile <name>`, which clears a specific profile's session instead of the current one.
+
+## `gsds profile`
+
+Lists stored login profiles and marks the current one.
+
+| Flag | Description |
+|---|---|
+| `--json` | Emit the profile list as machine-readable JSON instead of a table |
+
+### `gsds profile use <name>`
+
+Switches which stored profile is current. Every subsequent command that needs a session (`preview`, `logout`, `connector test`) uses this profile automatically until you switch again.
 
 ## `gsds create`
 
-Scaffolds a widget under `widgets/<name>/`. Interactive in a TTY; in a non-TTY the three flags below are required and the command fails fast when any is missing.
+Scaffolds a widget under `widgets/<name>/`. Interactive in a **TTY** (a terminal a person is typing into); in a non-TTY session (CI, an AI agent) the three flags below are required and the command fails fast when any is missing.
 
 | Flag | Required (non-TTY) | Description |
 |---|---|---|
@@ -11230,12 +12144,13 @@ Boots a local dev server, registers a preview session with the paired community,
 |---|---|
 | `--port` | Override the default preview port |
 | `--widget <name>` | Restrict the preview to specific widgets. Repeatable |
+| `--profile <name>` | Preview using a specific stored profile instead of the current one |
 
 Requires an active session. Each widget must declare a `dev` script in its `package.json` to appear in the picker. The package manager for each widget is auto-detected from that widget's lockfile.
 
 ## `gsds build`
 
-Regenerates `extensions_registry.json` and `connectors_registry.json` from source.
+Regenerates `extensions_registry.json` and `connectors_registry.json` from source. Installs each widget's dependencies automatically first (concurrently) if missing — no manual `npm install` needed per widget; a widget whose install fails is skipped without blocking the rest.
 
 | Flag | Description |
 |---|---|
@@ -11243,22 +12158,35 @@ Regenerates `extensions_registry.json` and `connectors_registry.json` from sourc
 
 Every `widget.json` must declare a non-empty `title` and `category`, or the build fails and names the offending file.
 
+### Shared dependency deduplication
+
+Any package declared in two or more widgets' `package.json` `dependencies` is externalized out of those widgets' bundles automatically, and the registry gets an `importMaps` entry so the browser loads one shared copy. `--validate` also checks `importMaps` for drift when every shared dependency's version can be resolved without installing anything; otherwise it skips that comparison rather than false-failing. See [Share Dependencies Across Widgets](../share-dependencies) for the full mechanics, exclusions, and version-conflict rules.
+
 ## `gsds connector test`
 
-Runs a Connector against the paired tenant. Every run reports whether it was resolved locally (`source: local`) or from the tenant (`source: remote`).
+Runs a Connector against the paired tenant. Every run reports which of three resolution steps won: a local `widgets/*/connectors.json` entry, the root `connectors_registry.json`, or the connector persisted on the tenant.
 
 | Argument | Description |
 |---|---|
-| `[name]` | Connector to run. Resolution is local-first: matches under `widgets/*/connectors.json` before matches on the tenant |
+| `[name]` | Connector to run. Resolution is local-first, in order: `widgets/*/connectors.json`, then `connectors_registry.json`, then the tenant |
 | `--payload @<file>` | Path to a JSON file containing the request body. File reference only — inline JSON is rejected |
 | `--query k=v` | Query parameter. Repeatable |
 | `--path-param k=v` | Path parameter. Repeatable |
 | `--verbose` | Print the rendered upstream request |
 | `--json` | Emit a machine-readable result |
+| `--profile <name>` | Run against a specific stored profile instead of the current one |
 
 Requires an active session. Composite Connectors cannot be tested.
 
+When a name resolves from a per-widget file, `gsds` warns on stderr if `connectors_registry.json` disagrees — either it defines the connector differently (drift since the last `gsds build`) or it doesn't define it at all. Both point at running `gsds build`. An unbuilt registry (absent, or with no connector entries at all) stays silent.
+
 Every run is captured under `.gsds/` with sensitive headers redacted.
+
+## `gsds update`
+
+Checks the npm registry for a newer CLI version now, and installs it after you confirm.
+
+No flags. In a non-TTY shell (or with `CI=true`), it prints the `npm install -g` command instead of running it, and exits `0` without installing. This is also the only way to take a major-version or prerelease upgrade — `gsds`'s automatic background check (see [Automate with CI and AI](../automate-with-ci-and-ai#control-the-automatic-update)) only ever installs a newer version within the current major.
 
 ## `gsds script` and `gsds style`
 
@@ -11296,7 +12224,8 @@ Manage sitewide scripts and stylesheets. Both commands share the same subcommand
 
 ## Related
 
-* Session model → [Authenticate](../authenticate)
+* Session model and profiles → [Authenticate](../authenticate)
+* Shared dependency deduplication → [Share Dependencies Across Widgets](../share-dependencies)
 * On-disk files → [Project files](project-files)
 * Error messages → [Troubleshooting](troubleshooting)
 
@@ -11319,7 +12248,7 @@ Describes every path `gsds` touches. Commit rules are stated per file.
 
 | Path | Purpose |
 |---|---|
-| `gsds.json` | Project-root marker. `gsds` refuses to run outside a directory containing this file, apart from `gsds init` |
+| `gsds.json` | Project-root marker. `gsds` refuses to run outside a directory containing this file, apart from `gsds init`. Its `dedupe.exclude` array names packages or scopes (a trailing `/*`) that `gsds build` never externalizes — see [Share Dependencies Across Widgets](../share-dependencies) |
 | `extensions_registry.json` | Registry of widgets, scripts, and stylesheets in the project. Regenerated by `gsds build` |
 | `connectors_registry.json` | Registry of Connectors and composite Connectors. Regenerated by `gsds build` |
 | `AGENTS.md` | AI-agent-oriented project notes seeded by `gsds init` |
@@ -11341,6 +12270,15 @@ Describes every path `gsds` touches. Commit rules are stated per file.
 
 Scripts and stylesheets do not have their own source manifests — their entries live only in `extensions_registry.json` and are edited through `gsds script` and `gsds style`.
 
+### Written by `gsds build`
+
+| Path | What changes |
+|---|---|
+| `widgets/<name>/vite.config.ts` | The `externalPackages` array is patched in place when the widget's set of shared dependencies changes. Nothing else in the file is touched |
+| `widgets/<name>/angular.json` | `architect.build.options.externalDependencies` is patched the same way, for Angular widgets |
+
+Both are part of the shared-dependency deduplication mechanism — see [Share Dependencies Across Widgets](../share-dependencies). Commit the result; don't hand-edit either value.
+
 ## In your user account
 
 ### OS keychain
@@ -11353,21 +12291,30 @@ Scripts and stylesheets do not have their own source manifests — their entries
 | Windows | Credential Store |
 | Linux | Secret Service or keyutils via `@napi-rs/keyring` |
 
-Service name: `gainsight-developer-studio-cli`. Account name: `default`.
+Service name: `gainsight-developer-studio-cli`. One account per profile — `default` unless you passed `--profile <name>` to `gsds login`.
 
 ### File fallback
 
-When the keychain is unavailable — no supported provider, headless CI, or a keychain error — `gsds` writes to `~/.config/gsds/credentials.json` at file mode `0600` and prints a one-time warning on stderr.
+When the keychain is unavailable — no supported provider, headless CI, or a keychain error — `gsds` writes to `~/.config/gsds/credentials.json` (`credentials.<profile>.json` for a named profile) at file mode `0600` and prints a one-time warning on stderr.
+
+### Other files under `~/.config/gsds/`
+
+| Path | Purpose |
+|---|---|
+| `current-profile` | Tracks which stored profile is current |
+| `update-check.json` | Cache for the automatic update check: last-checked timestamp, last outcome, and last version installed. Read before deciding whether the 8-hour check window has elapsed |
 
 ## Environment variables
 
 | Variable | Effect |
 |---|---|
 | `GSDS_DISABLE_KEYCHAIN=1` | Force the file-based credential fallback even when a keychain is available |
+| `GSDS_DISABLE_AUTO_UPDATE=1` | Skip the automatic update check entirely — no registry call, no install, no cache write |
 
 ## Related
 
-* Session pairing and TTL → [Authenticate](../authenticate)
+* Session pairing, TTL, and profiles → [Authenticate](../authenticate)
+* Shared dependency deduplication → [Share Dependencies Across Widgets](../share-dependencies)
 * Missing-file error text and recovery → [Troubleshooting](troubleshooting)
 * Command flags → [Command reference](commands)
 
@@ -11380,7 +12327,7 @@ description: >-
   recover.
 ---
 
-# CLI Troubleshooting
+# Troubleshooting
 
 Reference of the error messages `gsds` prints and the state each one describes.
 
@@ -11420,6 +12367,18 @@ A `extensions_registry.json` entry references a file that no longer exists in th
 
 **Recover:** Either restore the missing file, or remove the stale entry with `gsds script rm <name>` or `gsds style rm <name>`. `gsds create` warns on the same drift without failing, so you can scaffold new widgets while cleaning up.
 
+## `version mismatch across widgets`
+
+Two widgets declare the same dependency in `package.json` but resolve it to different installed versions. `gsds build` externalizes a shared dependency into one import map entry, so it cannot serve two versions at once.
+
+**Recover:** The error names each widget and version. Align the versions, or remove the dependency from one widget, then re-run `gsds build`. See [Share Dependencies Across Widgets](../share-dependencies).
+
+## `excluded from shared-dependency deduplication`
+
+A widget's `vite.config.ts` (or `angular.json`) couldn't be auto-migrated to the externalized-dependency shape. This only happens once the widget actually shares a dependency with another widget, and its build file has a shape `gsds build` can't confidently patch — a custom `rollupOptions`, or a build block laid out differently than the standard template.
+
+**Recover:** Copy the `externalPackages` block from a freshly scaffolded widget's `vite.config.ts` into the named widget's file. See [Share Dependencies Across Widgets](../share-dependencies).
+
 ## `--payload` rejected
 
 `--payload` accepts a file reference only. Inline JSON, and files that do not contain valid JSON, are rejected.
@@ -11438,11 +12397,18 @@ A `extensions_registry.json` entry references a file that no longer exists in th
 
 **Recover:** Confirm the widget's `package.json` declares a `dev` script. `gsds preview` boots each widget's `dev` script — widgets without one are skipped.
 
+## Widget missing from the registry after `gsds build`
+
+Its dependency install failed. `gsds build` installs each widget's dependencies automatically and skips a widget whose install fails, without failing the rest of the build.
+
+**Recover:** Run `npm install` (or your package manager's equivalent) inside the named widget's directory to see the underlying install error. Fix it, then re-run `gsds build`.
+
 ## Related
 
 * Session model → [Authenticate](../authenticate)
 * Where `.gsds/` and the keychain fit in → [Project files](project-files)
 * Flags for each command → [Command reference](commands)
+* Shared dependency deduplication → [Share Dependencies Across Widgets](../share-dependencies)
 
 ---
 
@@ -28807,6 +29773,22 @@ description: Release history of Developer Studio — new features, changes, and 
 # Changelog
 
 Changes and additions to Developer Studio, ordered by date (newest first).
+
+## 2026-09-21 - Web SDK: User Context
+
+The Web SDK can now read the current viewer and look up community members directly in the browser, without building a Connector. Use `ChWebSdk.Context.User()` to get the signed-in user (and a guest result when no one is signed in), and the `ChWebSdk.User.*` methods to fetch, list, filter, and search members. All responses use one unified user model and never include private data such as email addresses, message counts, or login source. See [User Context](/sdk/web-sdk/user-context) for the full reference.
+
+## 2026-09-18 - More Reliable Recovery When the AI Widget Builder Needs a Second Attempt
+
+When the AI Widget Builder can't produce a valid widget on its first attempt, it now reliably follows up with either a corrected widget or a plain-language question — never raw HTML or code pasted into the chat.
+
+## 2026-09-16 - Shared Dependencies via Import Maps
+
+Your registry can now declare an `importMaps` array alongside `widgets`, `scripts`, and `stylesheets`, letting multiple widgets on the same page share one copy of a framework like React or Vue instead of each bundling its own. See [Registry Reference](/custom-widgets/v2/registry-reference) for details.
+
+## 2026-09-10 - Design Tokens Reference Documents the Full Token Catalog
+
+The Design Tokens Reference page now documents the complete design-token catalog available for theming a widget — colors, fonts, spacing, and more — replacing a smaller, hand-maintained sample. See [Design Tokens Reference](/custom-widgets/v2/design-tokens-reference) for details.
 
 ## 2026-08-27 - Connectors: Templated Hosts in URLs
 

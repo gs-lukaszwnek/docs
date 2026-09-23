@@ -53,11 +53,20 @@ gsds logout
 
 Run this before handing a shared workstation to another developer, or when switching between tenants.
 
+## Use multiple tenants
+
+Each community you pair with is a separate **tenant**. Logging into a second tenant does not replace your first session. Each `gsds login` keeps its own **profile**, keyed by tenant, and whichever one you just logged into becomes current — every other command uses the current profile automatically.
+
+```sh
+gsds profile              # list stored profiles, marks the current one
+gsds profile use <name>   # switch which one is current
+```
+
+Pass `--profile <name>` on `gsds login`, `gsds preview`, `gsds logout`, or `gsds connector test` when you want to name a profile explicitly — for example logging into the same tenant twice under different names — or target a profile other than the current one for a single command without switching it.
+
 ## Where the session is stored
 
-`gsds` writes the session token to your OS keychain — macOS Keychain, Windows Credential Store, or Linux Secret Service / keyutils — under service `gainsight-developer-studio-cli`, account `default`.
-
-If the keychain is unavailable (no supported provider, headless CI, or a keychain error), `gsds` falls back to `~/.config/gsds/credentials.json` at file mode `0600` and prints a one-time warning on stderr. You can force the file fallback by setting `GSDS_DISABLE_KEYCHAIN=1`.
+`gsds` writes the session token to your OS keychain, one account per profile, with a file-based fallback when no keychain is available. See [Project Files](reference/project-files#in-your-user-account) for the full storage rules and paths.
 
 ## Commands that require a session
 

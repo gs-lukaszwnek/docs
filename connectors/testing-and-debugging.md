@@ -30,19 +30,21 @@ The header value is a JSON object with these fields:
 | `method` | HTTP method (`GET`, `POST`, etc.) |
 | `headers` | Resolved request headers sent to the external API |
 | `query_parameters` | Resolved query parameters |
-| `authentication` | Resolved authentication configuration |
+| `authentication` | Authentication configuration, with credential fields (API keys, OAuth client secrets, JWT signing keys and claims) masked as `**********` |
 | `request_body` | Resolved request body, or `null` if none |
 | `response_body` | The response body template string, or `null` if none |
 | `response_content_type` | The response content type override, or `null` if none |
 
-**Secret values are never included.** Any field that uses {{ get\_secret('...') }} appears as the original template literal instead of the actual secret value. All other templates — such as {{ user.email }} or {{ now() }} — show their resolved values.
+**Secret values are never included.** Credential fields inside `authentication` — an API key value, an OAuth client secret, a JWT signing key, or JWT claims — always appear as `**********`, whether they hold a literal value or a {{ get\_secret('...') }} reference. The header cannot be used to verify which secret a credential field references, or to inspect its contents; the connector editor is the place to review or change a credential's actual value.
+
+Outside `authentication`, secret references behave differently: any field that uses {{ get\_secret('...') }} appears as the original template literal, because this preview is always built without access to secret values — not because that specific field is masked. All other templates — such as {{ user.email }} or {{ now() }} — show their resolved values.
 
 Use this header to verify:
 
 * Your URL and query parameters resolved correctly
-* Authentication claims (such as JWT `iss`, `iat`, `exp`) contain the expected values
+* Non-credential authentication fields — such as an API key's name and location, an OAuth token URL and scope, or a JWT's algorithm — contain the expected values
 * Headers include the right content type and authorization scheme
-* Secret references are in the right places without exposing actual credentials
+* Secret references outside `authentication` are in the right places without exposing actual credentials
 
 ::: tip
 The debug header appears on both successful and failed test responses, so you can inspect the resolved request even when the external API returns an error.
@@ -71,7 +73,7 @@ The debug header appears on both successful and failed test responses, so you ca
 ### Secrets and Variables issues
 
 * If a template references a Secret or Variable that does not exist, or the name is misspelled, `get_secret()` and `get_variable()` leave the original template expression unresolved in the rendered output, and that literal text is then used in the request. A missing Variable in the URL causes the URL to fail validation. A missing Secret in a header is sent to the external API as literal text, which typically returns a `401 Unauthorized` or `403 Forbidden`.
-* Click **Test Connection** and inspect the `X-Debug-Request` header. If a field shows the raw `get_secret('...')` or `get_variable('...')` text instead of a resolved value, the name did not resolve. See [Debug request header](#debug-request-header).
+* Click **Test Connection** and inspect the `X-Debug-Request` header. If a field shows the raw `get_secret('...')` or `get_variable('...')` text instead of a resolved value, the name did not resolve. See [Debug request header](#debug-request-header). This check does not work for credential fields inside `authentication` — those always show `**********` regardless of whether the reference resolved.
 * Open **Integrations** → **Developer Studio** → **Secrets and Variables** and confirm the entry exists with exactly the name you used, then compare it character-by-character with the name in `get_secret('name')` or `get_variable('name')` — names are case-sensitive.
 * If a save is rejected when creating a Secret or Variable: the name may contain hyphens, spaces, or special characters (see [Secrets and Variables](secrets/#naming-rules)); the value may be empty; or an entry with that name may already exist — edit the existing entry or choose a different name.
 * **Secret value looks wrong** — the masked display only shows the first character. Edit the secret and re-enter the value to confirm it is correct.

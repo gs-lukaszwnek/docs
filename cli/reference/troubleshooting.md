@@ -5,7 +5,7 @@ description: >-
   recover.
 ---
 
-# CLI Troubleshooting
+# Troubleshooting
 
 Reference of the error messages `gsds` prints and the state each one describes.
 
@@ -45,6 +45,18 @@ A `extensions_registry.json` entry references a file that no longer exists in th
 
 **Recover:** Either restore the missing file, or remove the stale entry with `gsds script rm <name>` or `gsds style rm <name>`. `gsds create` warns on the same drift without failing, so you can scaffold new widgets while cleaning up.
 
+## `version mismatch across widgets`
+
+Two widgets declare the same dependency in `package.json` but resolve it to different installed versions. `gsds build` externalizes a shared dependency into one import map entry, so it cannot serve two versions at once.
+
+**Recover:** The error names each widget and version. Align the versions, or remove the dependency from one widget, then re-run `gsds build`. See [Share Dependencies Across Widgets](../share-dependencies).
+
+## `excluded from shared-dependency deduplication`
+
+A widget's `vite.config.ts` (or `angular.json`) couldn't be auto-migrated to the externalized-dependency shape. This only happens once the widget actually shares a dependency with another widget, and its build file has a shape `gsds build` can't confidently patch — a custom `rollupOptions`, or a build block laid out differently than the standard template.
+
+**Recover:** Copy the `externalPackages` block from a freshly scaffolded widget's `vite.config.ts` into the named widget's file. See [Share Dependencies Across Widgets](../share-dependencies).
+
 ## `--payload` rejected
 
 `--payload` accepts a file reference only. Inline JSON, and files that do not contain valid JSON, are rejected.
@@ -63,8 +75,15 @@ A `extensions_registry.json` entry references a file that no longer exists in th
 
 **Recover:** Confirm the widget's `package.json` declares a `dev` script. `gsds preview` boots each widget's `dev` script — widgets without one are skipped.
 
+## Widget missing from the registry after `gsds build`
+
+Its dependency install failed. `gsds build` installs each widget's dependencies automatically and skips a widget whose install fails, without failing the rest of the build.
+
+**Recover:** Run `npm install` (or your package manager's equivalent) inside the named widget's directory to see the underlying install error. Fix it, then re-run `gsds build`.
+
 ## Related
 
 * Session model → [Authenticate](../authenticate)
 * Where `.gsds/` and the keychain fit in → [Project files](project-files)
 * Flags for each command → [Command reference](commands)
+* Shared dependency deduplication → [Share Dependencies Across Widgets](../share-dependencies)

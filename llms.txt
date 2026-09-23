@@ -57,7 +57,7 @@ Everything you need to extend your community with custom extensions, built in th
 ### [Extensions] Publishing
 
 - [Build & Publish](https://developer-portal.gainsight.com/docs/custom-widgets/v2/build-and-publish.md): How widget, script, and stylesheet builds are triggered, processed, and published automatically when you push to your watched branch — no separate preview or promotion step
-- [Registry Reference](https://developer-portal.gainsight.com/docs/custom-widgets/v2/registry-reference.md): Reference for the root of extensions_registry.json — the widgets, scripts, and stylesheets arrays
+- [Registry Reference](https://developer-portal.gainsight.com/docs/custom-widgets/v2/registry-reference.md): Reference for the root of extensions_registry.json — the widgets, scripts, stylesheets, and importMaps arrays
 - [Content Security](https://developer-portal.gainsight.com/docs/custom-widgets/v2/content-security.md): Automated pre-publish security scanning the platform runs on every push, with no configuration needed; for guidance on which customization approach to choose, see Customization Guardrails
 - [Customization Guardrails](https://developer-portal.gainsight.com/docs/custom-widgets/v2/customization-guardrails.md): Decision guide for choosing a customization approach before you start — ranks no-code configuration, custom widgets, and other options by how safely they survive platform updates
 
@@ -127,6 +127,7 @@ Everything you need to extend your community with custom extensions, built in th
 
 - [Web SDK](https://developer-portal.gainsight.com/docs/sdk/web-sdk/overview.md): Overview of the Community Hub Web SDK (ChWebSdk) — the browser-side JavaScript API for searching content, managing users, and subscribing to topics from community pages.
 - [Methods and Constructors](https://developer-portal.gainsight.com/docs/sdk/web-sdk/methods-constructors.md): Complete API reference for the Community Hub Web SDK — DOM utilities, Content, User, Subscription methods, search options, and error handling.
+- [User Context](https://developer-portal.gainsight.com/docs/sdk/web-sdk/user-context.md): Complete reference for user context in the ChWebSdk — fetching the current viewer, looking up community members, the full User object schema, guest handling, and field availability by method.
 - [Examples](https://developer-portal.gainsight.com/docs/sdk/web-sdk/examples.md): Runnable code examples for the Web SDK — search, subscriptions, users, DOM observation, and script loading.
 
 ### [CLI] CLI
@@ -138,6 +139,7 @@ Everything you need to extend your community with custom extensions, built in th
 
 - [Authenticate](https://developer-portal.gainsight.com/docs/cli/authenticate.md): Pair the Developer Studio CLI with your community using a pairing code, check the current session, and log out.
 - [Test Connectors](https://developer-portal.gainsight.com/docs/cli/test-connectors.md): Run a Connector against your tenant from the CLI to verify request shape, auth, and payload rendering before you use it from a widget.
+- [Share Dependencies Across Widgets](https://developer-portal.gainsight.com/docs/cli/share-dependencies.md): Let widgets on the same page share one copy of a common dependency instead of each bundling its own, using the Developer Studio CLI's automatic deduplication.
 - [Manage Scripts and Stylesheets](https://developer-portal.gainsight.com/docs/cli/manage-scripts-and-styles.md): Register sitewide scripts and stylesheets from the CLI, either as local files or as external hosted URLs, and scope them to specific pages.
 - [Automate with CI and AI](https://developer-portal.gainsight.com/docs/cli/automate-with-ci-and-ai.md): Drive the Developer Studio CLI from CI pipelines and AI agents using --json output, non-interactive flags, and exit codes.
 
@@ -145,7 +147,7 @@ Everything you need to extend your community with custom extensions, built in th
 
 - [Command Reference](https://developer-portal.gainsight.com/docs/cli/reference/commands.md): Every Developer Studio CLI command, its flags, and its exit behavior.
 - [Project Files](https://developer-portal.gainsight.com/docs/cli/reference/project-files.md): Files the Developer Studio CLI creates, reads, and writes — in your project, on your user account, and via environment variables.
-- [CLI Troubleshooting](https://developer-portal.gainsight.com/docs/cli/reference/troubleshooting.md): Every documented Developer Studio CLI error message, what it means, and how to recover.
+- [Troubleshooting](https://developer-portal.gainsight.com/docs/cli/reference/troubleshooting.md): Every documented Developer Studio CLI error message, what it means, and how to recover.
 
 ### [API Reference] API Reference
 

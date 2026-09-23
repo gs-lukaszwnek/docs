@@ -18,6 +18,7 @@ Distributed as `@gainsight-hub/developer-studio-cli` on npm. Requires Node.js 18
 | Install `gsds` and preview your first widget end-to-end | [Get started](getting-started) |
 | Pair a session with your community | [Authenticate](authenticate) |
 | Run a Connector against your tenant from the CLI | [Test Connectors](test-connectors) |
+| Load one shared copy of a dependency across widgets | [Share Dependencies Across Widgets](share-dependencies) |
 | Register sitewide scripts and stylesheets | [Manage scripts and stylesheets](manage-scripts-and-styles) |
 | Drive `gsds` from CI or an AI agent | [Automate with CI and AI](automate-with-ci-and-ai) |
 | Look up a command, flag, or exit code | [Command reference](reference/commands) |

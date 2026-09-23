@@ -7,6 +7,22 @@ description: Release history of Developer Studio — new features, changes, and 
 
 Changes and additions to Developer Studio, ordered by date (newest first).
 
+## 2026-09-21 - Web SDK: User Context
+
+The Web SDK can now read the current viewer and look up community members directly in the browser, without building a Connector. Use `ChWebSdk.Context.User()` to get the signed-in user (and a guest result when no one is signed in), and the `ChWebSdk.User.*` methods to fetch, list, filter, and search members. All responses use one unified user model and never include private data such as email addresses, message counts, or login source. See [User Context](/sdk/web-sdk/user-context) for the full reference.
+
+## 2026-09-18 - More Reliable Recovery When the AI Widget Builder Needs a Second Attempt
+
+When the AI Widget Builder can't produce a valid widget on its first attempt, it now reliably follows up with either a corrected widget or a plain-language question — never raw HTML or code pasted into the chat.
+
+## 2026-09-16 - Shared Dependencies via Import Maps
+
+Your registry can now declare an `importMaps` array alongside `widgets`, `scripts`, and `stylesheets`, letting multiple widgets on the same page share one copy of a framework like React or Vue instead of each bundling its own. See [Registry Reference](/custom-widgets/v2/registry-reference) for details.
+
+## 2026-09-10 - Design Tokens Reference Documents the Full Token Catalog
+
+The Design Tokens Reference page now documents the complete design-token catalog available for theming a widget — colors, fonts, spacing, and more — replacing a smaller, hand-maintained sample. See [Design Tokens Reference](/custom-widgets/v2/design-tokens-reference) for details.
+
 ## 2026-08-27 - Connectors: Templated Hosts in URLs
 
 Connector URLs now accept a Variable in the host, not just in the path and query string — either as one label of the host or as the entire base URL. A single connector definition can therefore target a different host per community. The host can also name a fallback with the `default()` filter, so one connector serves a shared host everywhere and only the communities that need their own have to set the Variable; adding `true` as the second argument falls back when the Variable exists but is empty. See [Configuration](/connectors/configuration#templating-the-host) for details.

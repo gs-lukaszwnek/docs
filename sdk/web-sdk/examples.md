@@ -51,9 +51,61 @@ ChWebSdk.onReady(async () => {
 
 ```javascript
 ChWebSdk.onReady(async () => {
-  await ChWebSdk.Subscription.subscribeTopic('topic-abc')
+  await ChWebSdk.Subscription.subscribeToTopic('topic-abc')
   const isSubscribed = await ChWebSdk.Subscription.getTopicSubscriptionStatus('topic-abc')
   console.log(isSubscribed) // true
+})
+```
+
+## Get the current user (viewer context)
+
+```javascript
+ChWebSdk.onReady(async () => {
+  const me = await ChWebSdk.Context.User()
+
+  if (me.userId === null) {
+    // Guest (guest projection) — show login prompt or public-only content
+    console.log('Not logged in')
+    return
+  }
+
+  // Authenticated viewer
+  console.log(me.username)     // 'janedoe'
+  console.log(me.userId)       // 101
+  console.log(me.rank?.name)   // 'Regular'
+  console.log(me.badges)       // [{ id: 100, title: 'First post', url: '/badge/first-post' }]
+})
+```
+
+## Show the current user's badges
+
+```javascript
+ChWebSdk.onReady(async () => {
+  const me = await ChWebSdk.Context.User()
+  if (me.userId === null || me.badges.length === 0) return
+
+  const list = document.createElement('ul')
+  me.badges.forEach((badge) => {
+    const li = document.createElement('li')
+    li.textContent = badge.title
+    list.appendChild(li)
+  })
+  document.getElementById('badges')?.appendChild(list)
+})
+```
+
+## Personalize based on profile fields
+
+```javascript
+ChWebSdk.onReady(async () => {
+  const me = await ChWebSdk.Context.User()
+  if (me.userId === null) return
+
+  // Find a profile field by ID (field IDs are specific to your community)
+  const seniority = me.profileFields.find((f) => f.id === 3)
+  if (seniority?.value === 'senior') {
+    document.getElementById('advanced-content')?.removeAttribute('hidden')
+  }
 })
 ```
 
@@ -61,12 +113,23 @@ ChWebSdk.onReady(async () => {
 
 ```javascript
 ChWebSdk.onReady(async () => {
-  const ids = ['1', '2', '3']
-  const usersMap = await ChWebSdk.User.getUsersById(ids)
-  ids.forEach((id) => {
-    const u = usersMap[id]
-    if (u) console.log(u.name, u.avatar)
+  const users = await ChWebSdk.User.getUsersById([1, 2, 3])
+  users.forEach((u) => console.log(u.userId, u.username, u.avatar))
+})
+```
+
+## List moderators
+
+```javascript
+ChWebSdk.onReady(async () => {
+  const { totalItems, items } = await ChWebSdk.User.list({
+    role: [7], // role IDs are specific to your community
+    sort: 'lastVisit',
+    order: 'desc',
+    size: 10
   })
+  console.log(`${items.length} of ${totalItems} moderators`)
+  items.forEach((u) => console.log(u.username, u.rank?.name))
 })
 ```
 
@@ -92,5 +155,6 @@ ChWebSdk.loadScript('https://example.com/widget.js', () => {
 
 ## Next Steps
 
-* [Web SDK Methods and Constructors](methods-constructors) — DOM utilities, Content, User, Subscription methods, and error handling
+* [User Context](user-context) — complete reference for `Context.User()`, all User methods, and the User object schema
+* [Methods and Constructors](methods-constructors) — DOM utilities, Content, User, Subscription methods, and error handling
 * [Web SDK](overview) — how the SDK is loaded and when to use each API

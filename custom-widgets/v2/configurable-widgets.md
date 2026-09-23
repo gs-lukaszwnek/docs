@@ -166,6 +166,91 @@ Key behavior:
 
 For the full section field list and ordering rules, see the [Widget Definition Reference](widget-schema#configsection-object).
 
+## Show Fields Conditionally
+
+A field often only makes sense once another field has a particular value. Give it a
+`visibleWhen` list and it appears only while every rule in that list passes.
+
+```jsonc
+{
+  "configuration": { // [!code focus:30]
+    "properties": [
+      {
+        "name": "course_selection",
+        "type": "select",
+        "label": "Course selection",
+        "defaultValue": "manual",
+        "options": [
+          { "value": "manual", "label": "Manual" },
+          { "value": "recent", "label": "Most recently published" }
+        ]
+      },
+      {
+        "name": "courses",
+        "type": "autocomplete",
+        "label": "Courses",
+        "multiple": true,
+        "visibleWhen": [{ "field": "course_selection", "operator": "eq", "value": "manual" }],
+        "dynamicOptions": {
+          "endpoint": { "endpoint": "https://api.example.com/courses", "method": "GET" },
+          "mapping": { "valueKey": "id", "labelKey": "title" }
+        }
+      },
+      {
+        "name": "max_courses",
+        "type": "number",
+        "label": "Maximum courses shown",
+        "defaultValue": 3,
+        "visibleWhen": [{ "field": "course_selection", "operator": "eq", "value": "recent" }]
+      }
+    ]
+  }
+}
+```
+
+Picking **Manual** shows the course picker; picking **Most recently published** replaces it
+with the maximum instead.
+
+Rules are combined with AND — a field with two rules appears only when both hold. For "any of
+these values", use one rule with `in`:
+
+```jsonc
+{ "field": "layout", "operator": "in", "value": ["grid", "carousel"] }
+```
+
+To show a field once another has been filled in at all, use `not_empty`:
+
+```jsonc
+{ "field": "courses", "operator": "not_empty" }
+```
+
+A section takes the same `visibleWhen`, which hides the whole group:
+
+```jsonc
+{
+  "sections": [
+    {
+      "name": "grid_options",
+      "label": "Grid options",
+      "visibleWhen": [{ "field": "layout", "operator": "eq", "value": "grid" }]
+    }
+  ]
+}
+```
+
+Key behavior:
+
+* Hiding a field does not clear it. Values are stored flat by field `name`, so switching the
+  condition back restores what the editor had entered, and your widget still reads every value
+  the same way with `sdk.getProps()`.
+* A hidden field is not validated, so a `required` field the editor cannot see will not block
+  them from saving. Read the fields that match the mode your widget is in.
+* A field using `dynamicOptions` only calls its API once it becomes visible.
+* A section disappears when its own rules fail, and also when every field inside it is hidden.
+
+For the full operator table, what counts as empty, and the rules rejected at publish time, see
+the [Widget Definition Reference](widget-schema#conditional-visibility).
+
 ## Populate a Dropdown from an API
 
 Instead of a static `options` array, a `select` or `autocomplete` field can load its choices from an external API using `dynamicOptions`.

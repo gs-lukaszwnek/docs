@@ -91,6 +91,7 @@ An empty `settings: {}` object is valid — all fields take their defaults.
 | `dynamicOptions` | object | No | — | API-driven choices for `"select"` or `"autocomplete"` — see [Dynamic Options](#dynamic-options). Mutually exclusive with `options`. |
 | `multiple` | boolean | No | `false` | Allow selecting more than one value. Only for `"select"` or `"autocomplete"`. |
 | `sortable` | boolean | No | `false` | Let editors reorder selected values. Only valid for `"autocomplete"` fields with `multiple: true`; array order is preserved at runtime. |
+| `visibleWhen` | array of objects | No | — | Rules that decide whether this field is shown, based on other fields' values — see [Conditional Visibility](#conditional-visibility). |
 
 ##### Field Types
 
@@ -132,6 +133,7 @@ An entry in the `sections` array. A field joins a section by setting its `sectio
 | `label` | string | No | `name` | Title shown on the section header |
 | `description` | string | No | — | Help text shown under the section header |
 | `expanded` | boolean | No | `false` | When `true`, this section is the one open when the form first loads |
+| `visibleWhen` | array of objects | No | — | Rules that decide whether the whole section is shown — see [Conditional Visibility](#conditional-visibility). |
 
 ##### Section Ordering and Rendering
 
@@ -140,6 +142,80 @@ An entry in the `sections` array. A field joins a section by setting its `sectio
 * After the default group, sections appear in the order they are listed in `sections`, followed by any sections referenced only by a field — those in the order their first field appears.
 * The form shows one section open at a time. On load, the first `sections` entry marked `expanded` is opened; if none is marked, the first section is opened.
 * A field's `section` is presentation only. Configuration values are always stored flat, keyed by field `name`, so you can rename, reorder, or remove sections without affecting saved values.
+
+## Conditional Visibility
+
+A config field or section can declare `visibleWhen`: a list of rules evaluated against the
+values the editor has entered so far. All rules must pass for the field or section to be
+shown (AND). An absent or empty list means always visible.
+
+```jsonc
+{
+  "name": "maxCourses",
+  "type": "number",
+  "label": "Maximum courses shown",
+  "visibleWhen": [{ "field": "courseSelection", "operator": "eq", "value": "recent" }]
+}
+```
+
+### VisibilityRule Object
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `field` | string | Yes | — | `name` of another config field in the same widget |
+| `operator` | string | Yes | — | See the operator table below |
+| `value` | string, number, boolean, or array | Conditional | — | Required for every operator except `empty` and `not_empty`, which must not declare one |
+
+### Operators
+
+| Operator | Valid on | Meaning |
+|----------|----------|---------|
+| `eq` / `neq` | text, color, number, date, boolean, single-value select/autocomplete | Scalar comparison |
+| `in` / `not_in` | the above, plus multi-value fields | Scalar field: the value is one of the listed values. Multi-value field: the selection intersects the list. |
+| `contains` / `not_contains` | multi-value select/autocomplete | The selection includes this value |
+| `empty` / `not_empty` | everything except boolean | Whether the field has been filled in. Takes no `value`. |
+| `gt` / `gte` / `lt` / `lte` | number, date | Threshold. `value` is a number or an ISO date. |
+| `starts_with` / `ends_with` / `includes` | text, color | Case-insensitive substring checks |
+
+There is no regex operator. Use `rules.pattern` when you need a pattern — that validates a
+value the editor has entered, which is a different job from deciding what to show.
+
+`select` and `autocomplete` fields compare on the stored option `value`, never the label shown
+in the dropdown.
+
+Boolean fields use a real JSON boolean — `"value": true`, not `"value": "true"`.
+
+### What Counts as Empty
+
+`empty` is true for a field that is missing, `null`, an empty string, an empty list, or a
+selection with no value. It is **not** true for `false`, `0`, or `"0"` — those are values an
+editor deliberately set. This is why `not_empty` is not allowed on a boolean field: a checkbox
+always has a value. Use `eq` with `true` or `false` instead.
+
+### Behavior
+
+* **Values are kept.** Hiding a field does not clear it. Configuration values are always stored
+  flat, keyed by field `name`, so switching a condition back restores what the editor had
+  entered. Your widget receives the full configuration and decides what to read.
+* **Hidden fields skip validation.** A `required` field that is not on screen will not block the
+  editor from saving.
+* **Options load when shown.** A field using `dynamicOptions` fetches its options the first time
+  it becomes visible, so a hidden branch costs no API calls.
+* **Sections follow their fields.** A section is hidden when its own `visibleWhen` fails, and
+  also when every field inside it is hidden. If the open section is the one that just got
+  hidden, the form opens the first section still showing.
+
+### Errors Caught at Publish Time
+
+The configuration form leaves a field visible when it cannot apply a rule, so a broken rule
+would otherwise do nothing at all, without warning. Publishing therefore fails when a rule:
+
+* references a field that is not declared in the same widget, or references its own field
+* uses an operator the target field's type does not support (`eq` on a multi-value field,
+  `contains` on a single-value field, `gt` on a text field, `not_empty` on a boolean)
+* omits `value`, or supplies one for `empty` / `not_empty`
+* passes a list to an operator that compares a single value
+* compares a boolean field against a string, or a number field against a non-number
 
 ## Dynamic Options
 

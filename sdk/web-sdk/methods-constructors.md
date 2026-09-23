@@ -148,32 +148,119 @@ Each result includes at least: `id`, `title`, `url`, `contentType`, `excerpt`, a
 
 ***
 
+## Context Methods
+
+Access the current session context — who is viewing the page and their public community profile.
+
+### `Context.User()`
+
+Fetch the current user. Always returns a `User` object — a guest resolves to the **guest projection** (`userId: null`, `username: "guest"`), never `null`. This replaces reading `inSidedData.user`.
+
+**Browser-only.** Takes no parameters. `rank`, `badges`, and `profileFields` are always hydrated. No private data (email, PM counts, login source) is ever returned — not even for the authenticated viewer.
+
+```javascript
+ChWebSdk.onReady(async () => {
+  const me = await ChWebSdk.Context.User()
+  if (me.userId === null) {
+    // Guest — show login prompt
+    return
+  }
+  console.log(me.username, me.rank?.name, me.badges)
+})
+```
+
+See [User Context](user-context) for the complete reference — full User object schema, guest projection, field availability by method, and all examples.
+
+***
+
 ## User Methods
+
+All User methods are **browser-only**.
 
 ### `User.search(query)`
 
-Search users by query string. Returns an array of user objects.
+Search users by a query string. Returns a reduced field set optimized for mention/autocomplete UIs — use `User.list()` when you need the full user object.
 
-**Browser-only.** Requires a non-empty string `query`.
+Requires a non-empty string `query`. Returns **up to 25 users** — this limit is fixed and there is no size parameter.
 
 ```javascript
-const users = await ChWebSdk.User.search('john')
+const results = await ChWebSdk.User.search('john')
+results.forEach((u) => console.log(u.userId, u.username, u.avatar))
 ```
 
 ### `User.getUsersById(ids)`
 
-Fetch users by an array of user IDs. Returns an object keyed by user ID.
+Batch-fetch up to 100 users by ID. Unresolved IDs are silently omitted — the result array may be shorter than the input.
 
-**Browser-only.** Requires a non-empty array of IDs.
+Numeric strings are accepted and coerced. Returns an array (not a map keyed by ID — iterate with `.find()` or build your own map).
 
 ```javascript
-const usersMap = await ChWebSdk.User.getUsersById(['1', '2', '3'])
-const user1 = usersMap['1']
+const users = await ChWebSdk.User.getUsersById([101, 202, 303])
+const user = users.find((u) => u.userId === 101)
+```
+
+### `User.getById(id)`
+
+Fetch a single user by ID. Returns `null` if the ID does not resolve.
+
+```javascript
+const user = await ChWebSdk.User.getById(101)
+if (user) console.log(user.username)
+```
+
+### `User.list(options?)`
+
+List and filter community members with pagination and sorting. Returns `{ totalItems, items }` — **defaults to 25 items per page (max 100)**.
+
+```javascript
+const { totalItems, items } = await ChWebSdk.User.list({
+  role: [7],
+  sort: 'lastVisit',
+  order: 'desc',
+  size: 20
+})
+```
+
+Key options: `search`, `role`, `joinDate`, `lastActivity`, `topics`, `replies`, `points`, `page`, `size`, `sort`, `order`. See [User Context](user-context#user-lookup-and-listing-methods) for the full options reference.
+
+### `User.getRecentlyActive(limit?)`
+
+Returns users sorted by last visit descending. Convenience wrapper around `list()`.
+
+```javascript
+const users = await ChWebSdk.User.getRecentlyActive(10)
+```
+
+### `User.getByRole(role, options?)`
+
+List users that hold one or more roles. `role` is a single role ID or an array (OR semantics).
+
+```javascript
+const { items } = await ChWebSdk.User.getByRole(7)
+const { items } = await ChWebSdk.User.getByRole([7, 9], { size: 50 })
 ```
 
 ### User object shape
 
-Each user includes: `id`, `url`, `name`, `avatar`, `userTitle`, `userLevel`, `badges`, `isBanned`, and optional `rank` (with `name`, `color`, `icon`, etc.).
+All User methods return objects conforming to the unified `User` model. Key fields:
+
+| Field | Type | Notes |
+|---|---|---|
+| `userId` | `number \| null` | Canonical ID. Use this in new code — `id` is a deprecated alias. |
+| `username` | `string` | Display username. |
+| `avatar` | `string` | Avatar URL, or `""` when none. |
+| `profileUrl` | `string \| null` | Relative URL to the profile page. |
+| `rank` | `Rank \| null` | Hydrated rank with display styling (always present). |
+| `badges` | `Badge[]` | Hydrated badges (always present). |
+| `profileFields` | `ProfileField[]` | Custom profile fields (always present). |
+| `isBanned` | `boolean` | |
+| `isModerator` | `boolean` | |
+| `mainRole` | `string \| null` | Role slug (e.g. `"moderator"`). |
+| `reputation` | `number \| null` | Reputation score. |
+| `topics`, `replies`, `points` | `number` | Activity counts. |
+| `joinDate` | `string` | ISO-8601 datetime (not a Unix timestamp). |
+
+See [User Context](user-context#user-object-shape) for every field, type, and availability table.
 
 ***
 
@@ -185,8 +272,8 @@ All subscription methods are **browser-only** and require valid identifiers.
 
 | Method | Description |
 |--------|-------------|
-| `Subscription.subscribeTopic(publicId)` | Subscribe to a topic by its **public** ID. |
-| `Subscription.unsubscribeTopic(publicId)` | Unsubscribe from a topic. |
+| `Subscription.subscribeToTopic(publicId)` | Subscribe to a topic by its **public** ID. |
+| `Subscription.unsubscribeFromTopic(publicId)` | Unsubscribe from a topic. |
 | `Subscription.getTopicSubscriptionStatus(publicId)` | Returns `true` if the current user is subscribed. |
 
 ### Categories
@@ -198,7 +285,7 @@ All subscription methods are **browser-only** and require valid identifiers.
 | `Subscription.getCategorySubscriptionStatus(categoryId)` | Returns `true` if the current user is subscribed to the category. |
 
 ```javascript
-await ChWebSdk.Subscription.subscribeTopic('topic-123')
+await ChWebSdk.Subscription.subscribeToTopic('topic-123')
 const isSubscribed = await ChWebSdk.Subscription.getTopicSubscriptionStatus('topic-123')
 
 await ChWebSdk.Subscription.subscribeToCategory('42')
@@ -234,5 +321,6 @@ Common cases:
 
 ## Next Steps
 
+* [User Context](user-context) — complete reference for `Context.User()`, all User methods, User object schema, and examples
 * [Examples](examples) — runnable code covering search, subscriptions, users, and DOM interactions
 * [Web SDK](overview) — how the SDK is loaded and when to use each method.
