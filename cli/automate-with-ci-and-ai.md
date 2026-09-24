@@ -18,7 +18,7 @@ Two guarantees make `gsds` scriptable:
 
 ## Exit codes
 
-Commands exit `0` on success and `1` on any failure. Treat non-zero as "failed" — do not branch on the specific value. Finer-grained exit codes may land in a minor version, so scripts that switch on the exact number will break.
+Commands exit `0` on success, `1` on any failure, and `130` when interrupted with `Ctrl-C`. Treat non-zero as "failed" — do not branch on the specific value. Finer-grained exit codes may land in a minor version, so scripts that switch on the exact number will break.
 
 ## Non-interactive scaffolding
 
@@ -42,6 +42,8 @@ gsds list --json
 
 The top level is `{ widgets, connectors, scripts, stylesheets }`, not a bare array. Scripts that expect an array will fail — always index into the keyed object.
 
+Notices such as the stale-`cliVersion` warning go to stderr, so stdout is valid JSON you can pipe straight into `jq`.
+
 Example: preview every previewable widget:
 
 ```sh
@@ -60,13 +62,15 @@ Pair `--json` with `--query`, `--path-param`, and `--payload @body.json` for a f
 
 ## Validate the registries in CI
 
-`gsds build --validate` compares `extensions_registry.json` and `connectors_registry.json` against the source files and exits `1` on drift. Wire it into your pipeline as a gate:
+`gsds build --validate` checks that every entry in `extensions_registry.json` and `connectors_registry.json` still resolves to the files it names, and exits `1` on drift. Wire it into your pipeline as a gate:
 
 ```sh
 gsds build --validate
 ```
 
 `--validate` does not rebuild `dist/`, so run plain `gsds build` locally before committing — otherwise CI catches drift you introduced yourself.
+
+It compares entries, not formatting: field order, array order, and unmanaged top-level keys are ignored, so a hand-authored registry `gsds` has never touched does not fail the gate. A `widgets/<name>/` folder with no registry entry is only a warning, so it will not fail the gate either — and will not appear in your community.
 
 ## Sessions in CI
 

@@ -12,7 +12,7 @@ Use this guide when you want to exercise a Connector end-to-end from your termin
 ## Prerequisites
 
 * An active session — see [Authenticate](authenticate)
-* Either a local Connector defined under `widgets/<widget>/connectors.json`, or a Connector already deployed to your tenant
+* Either a Connector defined in `connectors_registry.json`, or a Connector already deployed to your tenant
 
 ## Run a Connector
 
@@ -20,12 +20,16 @@ Use this guide when you want to exercise a Connector end-to-end from your termin
 gsds connector test revenue-feed
 ```
 
-Every run reports where the Connector was resolved from:
+Every run reports where the Connector was resolved from, in two steps:
 
-* `source: local` — the Connector was found under `widgets/*/connectors.json` in your project
-* `source: remote` — the Connector was fetched from the tenant your session is paired with
+* `connectors_registry.json` in your project — the root file the platform ingests
+* the Connector persisted on the tenant your session is paired with
 
-Resolution is **local-first**. If a name matches a local Connector, `gsds` uses that even when the tenant has a Connector by the same name — this lets you iterate locally without publishing.
+Resolution is **local-first**. If a name matches a Connector in `connectors_registry.json`, `gsds` uses that even when the tenant has a Connector by the same name — this lets you iterate locally without publishing.
+
+The `source:` line prints before the request goes out, so on the tenant step it reports a plan rather than a result: `source: no local definition - trying a connector persisted on your tenant`. The settled value — `source: local` or `source: remote` — is what captures and `--json` output record.
+
+When neither step holds the name, the failure reads `Connector "x" is not defined in this project, and your tenant has no persisted connector under that name.`
 
 ## Provide a request body
 

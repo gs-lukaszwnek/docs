@@ -27,23 +27,59 @@ The stored session token failed against your tenant. Session tokens are valid fo
 
 **Recover:** Get a fresh pairing code from **Integrations → Developer Studio → CLI Access** in your community and redeem it with `gsds login <pairing_code>`. Confirm with `gsds login --status`.
 
+## `Stored login has expired. Run gsds login <pairing_code> to re-authenticate.`
+
+`gsds preview` found a stored session for the profile, but it has timed out. This is distinct from `Run gsds login <pairing_code> first.`, which means nothing is stored for that profile at all.
+
+**Recover:** Redeem a fresh pairing code under the same profile. `gsds profile` marks an expired profile `(expired)`, and one whose stored credential cannot be read `(unreadable)`, so you can see which one to log back into.
+
+## A profile is marked `(unreadable)`
+
+`gsds profile` lists the profile, but its stored credential cannot be read back — the entry exists and its contents are corrupted, hand-edited, or restored from a backup that no longer parses. It is not a usable session, and it is reported separately from `(expired)` because nothing about it can be read, including whether it had timed out.
+
+**Recover:** Same as an expired session — redeem a fresh pairing code under that profile with `gsds login <pairing_code> --profile <name>`.
+
 ## Pairing code expired
 
 Pairing codes have a 1-minute time-to-live.
 
 **Recover:** Get a fresh pairing code from **CLI Access** and redeem it immediately, with your terminal already open.
 
+## A registry file is missing
+
+`extensions_registry.json` or `connectors_registry.json` is gone from a project that previously had it. `gsds build` refuses rather than writing an empty registry: the file is the source of truth, not generated output, so rebuilding cannot recover the titles, categories, configuration, and types it held.
+
+**Recover:** Restore the file from version control. To deliberately start over, create it yourself with an empty `{"widgets": []}` (or `{"connectors": []}`).
+
 ## `Missing required field: category`
 
-A `widget.json` in your project is missing a required field. `gsds build` refuses to write the registry until every `widget.json` declares a non-empty `title` and `category`.
+A widget entry in `extensions_registry.json` is missing a required field. `gsds build` refuses to write the registry until every entry declares a non-empty `title` and `category`.
 
-**Recover:** Add a `category` string to the `widget.json` named in the error.
+**Recover:** Add a `category` string to the entry named in the error.
 
 ## `Script "x" points at missing file`
 
-A `extensions_registry.json` entry references a file that no longer exists in the project. `gsds build` refuses to regenerate the registry while it is inconsistent.
+An `extensions_registry.json` entry references a file that no longer exists in the project. `gsds build` refuses to write the registry while it is inconsistent.
 
 **Recover:** Either restore the missing file, or remove the stale entry with `gsds script rm <name>` or `gsds style rm <name>`. `gsds create` warns on the same drift without failing, so you can scaffold new widgets while cleaning up.
+
+## `widget.json ignored, no longer used, safe to delete`
+
+A leftover `widget.json` or `connectors.json` inside a widget directory. Both registries are the sole source of truth now, and `gsds build` never reads either file.
+
+**Recover:** Delete the file. This message only appears when the widget already has an entry in `extensions_registry.json`, so nothing is lost with it.
+
+## `widget.json found but not in extensions_registry.json`
+
+The same leftover file, for a widget with no registry entry. Here the file is the widget's only remaining metadata, so deleting it loses the widget.
+
+**Recover:** Copy the widget's `title`, `category`, `type`, and `source` or `content` into an `extensions_registry.json` entry, then delete the file.
+
+## `widgets/<name>/ has no entry in extensions_registry.json`
+
+A widget directory the registry never mentions. The platform only serves what the registry declares, so this widget will never appear in your community.
+
+**Recover:** Add an entry for it to `extensions_registry.json`, or delete the folder if it is not a widget.
 
 ## `version mismatch across widgets`
 
@@ -65,21 +101,37 @@ A widget's `vite.config.ts` (or `angular.json`) couldn't be auto-migrated to the
 
 ## Port in use
 
-`gsds preview` failed to bind its default port.
+`gsds preview` failed to bind its port. The default is `5173`.
 
 **Recover:** `gsds preview --port <port>` on a free port.
+
+## The browser blocks the local preview
+
+`gsds preview` serves from `http://localhost:5173` by default, and each JavaScript widget's own `dev` script serves from a further port. Your community page — served over HTTPS — loads from those addresses directly. Chrome 142 and later treat that as a local network request and ask permission the first time, with a prompt about looking for and connecting to devices on your local network. Other Chromium-based browsers behave the same way. Granting it once covers every port your preview uses.
+
+**Recover:** Choose **Allow** when the prompt appears. If you already chose to block it, reopen the choice from the site settings icon at the left of the address bar and allow local network access for your community's address, then reload the page. Until it is allowed, the browser cannot reach your local server and your local widgets do not load.
 
 ## Widget missing from the picker
 
 `gsds preview` is running but a widget does not appear in the No-Code Builder.
 
-**Recover:** Confirm the widget's `package.json` declares a `dev` script. `gsds preview` boots each widget's `dev` script — widgets without one are skipped.
+**Recover:** Check three things, in order.
 
-## Widget missing from the registry after `gsds build`
+1. **The widget has a registry entry.** `gsds build` never derives entries from a folder scan, so a `widgets/<name>/` folder the registry doesn't declare is invisible.
+2. **The widget declares a `dev` script** in its `package.json`, or its registry entry declares a `source` so the preview server can serve it directly. A widget with neither is skipped, and `gsds preview` says so.
+3. **You are signed in to the community as the same account that ran `gsds login`.** The No-Code Builder looks for a preview session belonging to the account you are signed in as, so a session paired under a different account is not visible to you. Confirm the paired account with `gsds login --status`.
 
-Its dependency install failed. `gsds build` installs each widget's dependencies automatically and skips a widget whose install fails, without failing the rest of the build.
+## A preview asset 404s or loads the wrong file
 
-**Recover:** Run `npm install` (or your package manager's equivalent) inside the named widget's directory to see the underlying install error. Fix it, then re-run `gsds build`.
+A widget served as static HTML references an asset that does not load under `gsds preview`.
+
+**Recover:** Resolve references the way publishing does. A reference that starts with a slash — a root-absolute reference, such as `/app.js` — resolves against the widget root, `widgets/<name>/app.js`, not against the directory its HTML sits in. A reference naming no file in the widget is left exactly as written and warned about once, so check that warning for a typo before assuming the server is at fault.
+
+## `Per-widget build failed`
+
+One or more widgets could not be prepared, and `gsds build` names each one. The most common cause is a dependency install that failed: `gsds build` installs each widget's dependencies automatically, leaves a widget whose install failed out of the rebuild pass, and then fails the whole run rather than shipping a stale `dist/` for it. The widget's registry entry is untouched — the registry is hand-authored, and no build path removes an entry.
+
+**Recover:** Run `npm install` (or your package manager's equivalent) inside the named widget's directory to see the underlying error. Fix it, then re-run `gsds build`.
 
 ## Related
 

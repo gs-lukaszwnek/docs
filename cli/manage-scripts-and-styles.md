@@ -29,7 +29,7 @@ gsds script new analytics-tracker
 gsds style new brand-overrides
 ```
 
-`new` scaffolds the source file in your repository and adds an entry to the registry. Edit the file and re-run `gsds build` to update the registry.
+`new` scaffolds the source file in your repository and adds an entry to `extensions_registry.json`. Edit the file, then run `gsds build` to confirm the registry entry still resolves to it.
 
 ## Register an external URL
 
@@ -44,8 +44,8 @@ gsds style link https://cdn.example.com/themes/brand.css
 
 | Flag | Purpose |
 |---|---|
-| `--attr k=v` | Add an HTML attribute to the injected tag (repeatable) |
-| `--page <name>` | Scope the asset to a specific page instead of the whole site |
+| `--attr k=v` | Add an HTML attribute to the injected tag (repeatable). For a valueless attribute such as `defer`, pass the name alone: `--attr defer` |
+| `--page <name>` | Scope the asset to a specific page instead of the whole site (repeatable; identical values collapse to one rule) |
 | `--placement head\|bodyStart\|bodyEnd` | Where to inject the script tag. Scripts only |
 | `--name <slug>` | Explicit slug. Available on `link` only |
 
@@ -75,7 +75,7 @@ gsds style rm brand-overrides
 
 ## Handle registry drift
 
-If a registered script or stylesheet points at a file that no longer exists, `gsds build` refuses to regenerate the registry until you fix it. You have two ways out:
+If a registered script or stylesheet points at a file that no longer exists, `gsds build` refuses to write the registry until you fix it. You have two ways out:
 
 * Restore the missing file, or
 * Remove the stale entry with `gsds script rm <name>` or `gsds style rm <name>`
@@ -84,6 +84,6 @@ If a registered script or stylesheet points at a file that no longer exists, `gs
 
 ## Next steps
 
-* Rebuild registries and validate for CI in the [Command reference](reference/commands)
+* Gate CI on registry drift in [Automate with CI and AI](automate-with-ci-and-ai)
 * Understand what's stored where in [Project files](reference/project-files)
 * Resolve the `Script "x" points at missing file` message in [Troubleshooting](reference/troubleshooting)

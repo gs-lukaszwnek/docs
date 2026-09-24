@@ -26,7 +26,7 @@ npm install -g @gainsight-hub/developer-studio-cli
 gsds --version
 ```
 
-You should see a version like `1.2.0` or newer.
+You should see a version like `1.8.2` or newer.
 
 ## 2. Set up your project directory
 
@@ -60,6 +60,8 @@ gsds login PAIRING-CODE-FROM-COMMUNITY
 
 Pairing codes are single-use and expire **1 minute** after they are issued, so open **CLI Access** with your terminal already open. The resulting session token is stored in your OS keychain, is tenant-scoped, and lasts **8 hours**.
 
+Use the same account you sign in to your community with. Preview sessions are matched per user, so a session paired under one account is not visible to another in the No-Code Builder.
+
 You can confirm the session at any time:
 
 ```sh
@@ -74,7 +76,9 @@ From your project root, scaffold a React widget:
 gsds create --name revenue-overview --framework react --category Analytics
 ```
 
-`gsds create` writes a new folder under `widgets/revenue-overview/` with a `widget.json`, a `package.json` that includes a `dev` script (required for previewing), and starter source files.
+`gsds create` writes a new folder under `widgets/revenue-overview/` with a `package.json` that includes a `dev` script (required for previewing) and starter source files, and appends the widget's entry to `extensions_registry.json`.
+
+There is no per-widget `widget.json`. `extensions_registry.json` is where a widget is declared — a folder the registry doesn't mention is invisible to your community, and `gsds build` warns when it finds one.
 
 ## 5. Preview it in your community
 
@@ -84,16 +88,26 @@ Start the local dev server:
 gsds preview
 ```
 
-`gsds preview` requires an active session (you just paired one). It boots each widget's `dev` script — using the package manager declared in that widget's `package.json` (`packageManager` field), falling back to lockfile detection when that's absent — and registers a preview session with your community.
+`gsds preview` requires an active session (you just paired one). It boots each widget's `dev` script and registers a preview session with your community.
+
+### Allow the browser to reach your local server
+
+Do this before you open the picker. `gsds preview` serves from `http://localhost:5173` by default, and each widget with its own `dev` script serves from a further port. Your community page — served over HTTPS — loads from those addresses directly, and Chrome 142 and later ask permission the first time, with a prompt about looking for and connecting to devices on your local network. Other Chromium-based browsers behave the same way.
+
+Choose **Allow**. Until it is allowed, the browser cannot reach your local server and your local widgets do not load. If you blocked it by mistake, reopen the choice from the site settings icon at the left of the address bar and reload the page.
+
+### Open the picker
 
 Open your community, browse to a page, and open the widget picker in the No-Code Builder. Your local widgets appear alongside published ones while `gsds preview` is running. Edit files under `widgets/revenue-overview/` and the picker reflects your changes.
+
+If a widget does not appear, work through [Widget missing from the picker](reference/troubleshooting#widget-missing-from-the-picker).
 
 Stop the preview with `Ctrl-C`.
 
 ## What you learned
 
 * How to install `gsds` and confirm it works
-* How to pair a session with a pairing code
+* How to pair a session with a pairing code, under the account you browse the community with
 * How to scaffold a project and a widget
 * How to preview local widgets against your community
 
@@ -102,3 +116,4 @@ Stop the preview with `Ctrl-C`.
 * Learn the full session model — pairing, expiry, and logout — in [Authenticate](authenticate)
 * Add a Connector and run it against your tenant with [Test Connectors](test-connectors)
 * See every command and flag in the [Command reference](reference/commands)
+* Match an error message or a silent failure to its cause in [Troubleshooting](reference/troubleshooting)

@@ -23,7 +23,7 @@ Distributed as `@gainsight-hub/developer-studio-cli` on npm. Requires Node.js 18
 | Drive `gsds` from CI or an AI agent | [Automate with CI and AI](automate-with-ci-and-ai) |
 | Look up a command, flag, or exit code | [Command reference](reference/commands) |
 | See which files `gsds` reads and writes | [Project files](reference/project-files) |
-| Recognize a specific error message | [Troubleshooting](reference/troubleshooting) |
+| Recognize an error message, or work out why a preview silently isn't working | [Troubleshooting](reference/troubleshooting) |
 
 ## What `gsds` is not
 

@@ -35,6 +35,8 @@ gsds login --status
 
 Reports which tenant the current session is bound to and whether it is still valid. Use this first whenever you see a `401` from `gsds preview` or `gsds connector test`.
 
+`gsds preview` reports a missing session and an expired one differently — see [Troubleshooting](reference/troubleshooting) for what each message means.
+
 ## Refresh an expired session
 
 There is no refresh flow — when the 8-hour token expires, get a new pairing code from **Integrations → Developer Studio → CLI Access** and redeem it:
@@ -58,11 +60,29 @@ Run this before handing a shared workstation to another developer, or when switc
 Each community you pair with is a separate **tenant**. Logging into a second tenant does not replace your first session. Each `gsds login` keeps its own **profile**, keyed by tenant, and whichever one you just logged into becomes current — every other command uses the current profile automatically.
 
 ```sh
-gsds profile              # list stored profiles, marks the current one
+gsds profile              # list stored profiles, marks the current one and any needing a re-login
 gsds profile use <name>   # switch which one is current
 ```
 
+`gsds profile` marks a profile whose session has timed out `(expired)`, and one whose stored credential is present but cannot be read back — corrupted, hand-edited, or restored from a backup — `(unreadable)`. Markers combine, so the current profile can itself be expired and shows as `(current, expired)`:
+
+```
+acme-en (current)
+acme-eu (expired)
+acme-sandbox (unreadable)
+```
+
+An expired profile stays stored and stays switchable — it is the name to log back in under, so nothing is dropped from the list.
+
+`gsds logout` promotes another profile to current when one remains, preferring one that is neither expired nor unreadable, and tells you when the one it promoted still needs a new login.
+
 Pass `--profile <name>` on `gsds login`, `gsds preview`, `gsds logout`, or `gsds connector test` when you want to name a profile explicitly — for example logging into the same tenant twice under different names — or target a profile other than the current one for a single command without switching it.
+
+## Use the same account as your community session
+
+`gsds preview` registers its preview session against the account that redeemed the pairing code. The No-Code Builder then looks for a preview session belonging to the account you are signed in as, so the two have to be the same person.
+
+A session paired under a different account on the same tenant — a colleague's login, or a second account of your own — is not visible to you in the builder, and your local widgets never appear there. `gsds login --status` reports which session is current.
 
 ## Where the session is stored
 
@@ -72,7 +92,7 @@ Pass `--profile <name>` on `gsds login`, `gsds preview`, `gsds logout`, or `gsds
 
 | Command | Why it needs a session |
 |---|---|
-| `gsds preview` | Registers a preview session with your community so local widgets appear in the picker |
+| `gsds preview` | Registers a preview session with your community so local widgets appear in the picker, for the account that paired it |
 | `gsds connector test` | Runs against the paired tenant |
 
 Every other command works without a session.
