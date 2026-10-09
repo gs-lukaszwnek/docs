@@ -18,7 +18,7 @@ This encapsulation has important implications:
 
 * Elements inside your widget are **not accessible** from the main document
 * `document.querySelector()` cannot reach your widget elements
-* `document.currentScript` may be `null` in the widget script context
+* `document.currentScript` is `null` in widget scripts
 * Multiple widget instances each have their own Shadow DOM
 
 ## Shadow DOM and Host Element
@@ -63,14 +63,7 @@ Whichever selector you query with — `root.querySelector(...)` here, or `sdk.$(
 
 ## Script Context
 
-`document.currentScript` may be `null` in the widget execution context. This affects patterns like:
-
-```js
-// This may fail — document.currentScript can be null in the widget context
-window.WIDGET_BASE_URL = document.currentScript.src.replace(/[^/]+$/, '');
-```
-
-Do not rely on `document.currentScript` inside widget code. Use `sdk.$()` / `sdk.$$()` inside `init(sdk)` to interact with your widget's DOM.
+`document.currentScript` is always `null` in widget scripts, so patterns that read `document.currentScript.src` fail. Use `sdk.$()` / `sdk.$$()` inside `init(sdk)` to interact with your widget's DOM, and see [Hosting Widgets](hosting-widgets#javascript-dynamic-loading-limitation) for resolving asset URLs.
 
 ## Multiple Widget Instances
 

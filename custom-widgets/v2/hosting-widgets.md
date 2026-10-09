@@ -186,31 +186,26 @@ Asset URLs in JavaScript files are **not** transformed. If your JS dynamically l
    const logo = 'data:image/png;base64,...';
    ```
 
-2. **Use a base URL variable**: Pass the widget base URL from HTML to JS
-
-   ::: warning
-   `document.currentScript` may be `null` in the widget execution context (scripts run inside Shadow DOM). Test this pattern before relying on it. For a reliable alternative, see [Rendering & DOM](rendering-and-dom#script-context).
-   :::
-
-   ```html
-   <script>
-     window.WIDGET_BASE_URL = document.currentScript.src.replace(/[^/]+$/, '');
-   </script>
-   <script src="app.js"></script>
-   ```
-
-   ```javascript
-   // In app.js
-   const logo = window.WIDGET_BASE_URL + 'images/logo.png';
-   ```
-
-3. **Preload in HTML**: Reference assets in HTML where they get transformed
+2. **Preload in HTML**: Reference assets in HTML where they get transformed, then read the transformed URL from your widget's `init(sdk)`
    ```html
    <link rel="preload" as="image" href="images/logo.png" id="logo-preload">
-   <script>
-     const logo = document.getElementById('logo-preload').href;
+   <script type="module">
+     export async function init(sdk) {
+       await sdk.whenReady()
+       const logo = sdk.$('#logo-preload').href
+     }
    </script>
    ```
+
+3. **Resolve against the module's own URL**: In a module loaded from a file (`<script type="module" src="...">`), `import.meta.url` is that file's URL
+   ```javascript
+   const logo = new URL('images/logo.png', import.meta.url).href;
+   ```
+   This does not work in inline `<script type="module">` code, whose `import.meta.url` is a temporary `blob:` URL.
+
+::: warning
+Do not use `document.currentScript` to find your widget's URL — it is always `null` in widget scripts.
+:::
 
 ## Choosing an Approach
 
