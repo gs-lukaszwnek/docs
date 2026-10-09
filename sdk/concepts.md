@@ -41,9 +41,9 @@ A widget can use all three at once — read its props from the runtime, call a c
 
 ## Older code: the window globals
 
-Earlier widget code reached these through globals: `new window.WidgetServiceSDK()` for connectors and `window.ChWebSdk` for the Web SDK. Both are deprecated in widget code. They still work, but use `sdk.connectors` and `sdk.web` from `init(sdk)` instead.
+Earlier widget code reached these through globals: `new window.WidgetServiceSDK()` for connectors and `window.ChWebSdk` for the Web SDK. Both are deprecated. They still work, but use `sdk.connectors` and `sdk.web` from `init(sdk)` instead.
 
-Code outside a widget — [script extensions](/custom-widgets/v2/scripts-overview) and third-party scripts on community pages — receives no `sdk` object, so it keeps using `window.ChWebSdk`.
+The SDKs are available only through the `sdk` object your widget's `init(sdk)` receives. Script extensions and other page scripts have no SDK access — if you need community data or a connector, build a [widget](/custom-widgets/v2/build-first-widget).
 
 ## What's Next
 

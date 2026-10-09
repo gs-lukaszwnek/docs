@@ -2,8 +2,8 @@
 url: >-
   https://developer-portal.gainsight.com/docs/sdk/web-sdk/methods-constructors.md
 description: >-
-  Complete API reference for the Community Hub Web SDK — DOM utilities, Content,
-  User, Subscription methods, search options, and error handling.
+  Complete API reference for the Community Hub Web SDK — Loading scripts,
+  Content, User, Subscription methods, search options, and error handling.
 ---
 
 # Reference
@@ -11,51 +11,10 @@ description: >-
 Full reference for every method, option, and return type exposed by the Web SDK object (`sdk.web`) on community pages.
 
 ::: info
-Examples assume widget code inside your widget's `init(sdk)` function, after checking that `sdk.web` is defined. In [script extensions](/custom-widgets/v2/scripts-overview), which receive no `sdk` object, substitute `window.ChWebSdk` for `sdk.web`. `window.ChWebSdk` in widget code still works but is deprecated — use `sdk.web`. Scripts keep using `window.ChWebSdk`. See [Web SDK](overview).
+Examples assume widget code inside your widget's `init(sdk)` function, after checking that `sdk.web` is defined. See [Web SDK](overview).
 :::
 
-## DOM and lifecycle
-
-### `onReady(callback)`
-
-Run a callback once the page document has loaded. If the document is already loaded (`complete` or `interactive`), the callback runs immediately; otherwise it runs on `DOMContentLoaded`. It does not wait for the SDK. In widget code you do not need it: inside `init(sdk)`, after `await sdk.whenReady()`, the document has already loaded, so call `sdk.web` methods directly.
-
-```javascript
-window.ChWebSdk.onReady(() => {
-  // Page document has loaded
-})
-```
-
-### `observeElement(selector, callback)`
-
-Wait until an element matching `selector` appears in the DOM, then run `callback` with that element. Uses a `MutationObserver` and disconnects after the element is found.
-
-`observeElement` and `onEvent` search the page `document`, so they cannot find elements inside a widget's own shadow root. Use `sdk.$()` for those. The snippets below are host-page or [script extension](/custom-widgets/v2/scripts-overview) usage.
-
-```javascript
-window.ChWebSdk.observeElement('#my-widget-root', (el) => {
-  el.textContent = 'Widget loaded'
-})
-```
-
-### `onEvent(selector, event, handler, options?)`
-
-Bind an event listener to the first element that matches `selector` (waiting for it via `observeElement` if needed). Returns an **unsubscribe** function to remove the listener.
-
-| Parameter  | Type     | Description                                      |
-|------------|----------|--------------------------------------------------|
-| `selector` | `string` | CSS selector for the target element              |
-| `event`    | `string` | DOM event name (e.g. `'click'`, `'submit'`)      |
-| `handler`  | `function` | Event handler                                 |
-| `options`  | `boolean \| AddEventListenerOptions` | Optional; e.g. `{ once: true }` |
-
-```javascript
-const unsubscribe = window.ChWebSdk.onEvent('.submit-btn', 'click', (ev) => {
-  ev.preventDefault()
-  // ...
-})
-// Later: unsubscribe() to remove the listener
-```
+## Loading scripts
 
 ### `loadScript(src, callback?)`
 
@@ -65,14 +24,6 @@ Load an external script by URL. If the script is already present, calls `callbac
 sdk.web.loadScript('https://example.com/plugin.js', () => {
   console.log('Script loaded')
 })
-```
-
-### `loadStyle(href)`
-
-Inject a stylesheet link. No-op if a link with the same `href` already exists.
-
-```javascript
-sdk.web.loadStyle('https://example.com/widget.css')
 ```
 
 ***

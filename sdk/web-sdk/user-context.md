@@ -11,7 +11,7 @@ description: >-
 This page documents the Web SDK user-context API: fetching the current viewer with `sdk.web.Context.User()` and looking up community members with the `sdk.web.User.*` methods. All run as the visiting user, authorized by the community session cookie.
 
 ::: info Where the examples run
-Examples run inside a widget's `init(sdk)` function, after checking that `sdk.web` is defined. It is `undefined` on embedded widgets and Skilljar host pages. [Script extensions](/custom-widgets/v2/scripts-overview) receive no `sdk` object; they use `window.ChWebSdk` instead. `window.ChWebSdk` in widget code still works but is deprecated — use `sdk.web`. Scripts keep using `window.ChWebSdk`. See [Web SDK](overview).
+Examples run inside a widget's `init(sdk)` function, after checking that `sdk.web` is defined. It is `undefined` on embedded widgets and Skilljar host pages. See [Web SDK](overview).
 :::
 
 ::: tip

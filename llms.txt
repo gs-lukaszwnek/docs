@@ -132,9 +132,9 @@ Everything you need to extend your community with custom extensions, built in th
 ### [SDK] Web SDK
 
 - [Web SDK](https://developer-portal.gainsight.com/docs/sdk/web-sdk/overview.md): Overview of the Community Hub Web SDK (sdk.web) — the browser-side JavaScript API for searching content, managing users, and subscribing to topics from community pages.
-- [Reference](https://developer-portal.gainsight.com/docs/sdk/web-sdk/methods-constructors.md): Complete API reference for the Community Hub Web SDK — DOM utilities, Content, User, Subscription methods, search options, and error handling.
+- [Reference](https://developer-portal.gainsight.com/docs/sdk/web-sdk/methods-constructors.md): Complete API reference for the Community Hub Web SDK — Loading scripts, Content, User, Subscription methods, search options, and error handling.
 - [User Context](https://developer-portal.gainsight.com/docs/sdk/web-sdk/user-context.md): Complete reference for user context in the Web SDK — fetching the current viewer, looking up community members, the full User object schema, guest handling, and field availability by method.
-- [Examples](https://developer-portal.gainsight.com/docs/sdk/web-sdk/examples.md): Runnable code examples for the Web SDK — search, subscriptions, users, DOM observation, and script loading.
+- [Examples](https://developer-portal.gainsight.com/docs/sdk/web-sdk/examples.md): Runnable code examples for the Web SDK — search, subscriptions, users, and script loading.
 
 ### [CLI] CLI
 

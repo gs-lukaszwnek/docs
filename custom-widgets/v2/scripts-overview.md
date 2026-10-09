@@ -28,6 +28,8 @@ flowchart LR
 
 ## Scripts vs Widgets
 
+Scripts have no access to the [SDK](/sdk/). It is available only to widgets, through the `sdk` object `init(sdk)` receives.
+
 | Aspect | Widget | Script |
 |--------|--------|--------|
 | Scope | One component in one page zone | The whole page, every matching page |

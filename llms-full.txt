@@ -3367,6 +3367,8 @@ flowchart LR
 
 ## Scripts vs Widgets
 
+Scripts have no access to the [SDK](/sdk/). It is available only to widgets, through the `sdk` object `init(sdk)` receives.
+
 | Aspect | Widget | Script |
 |--------|--------|--------|
 | Scope | One component in one page zone | The whole page, every matching page |
@@ -10022,9 +10024,9 @@ A widget can use all three at once — read its props from the runtime, call a c
 
 ## Older code: the window globals
 
-Earlier widget code reached these through globals: `new window.WidgetServiceSDK()` for connectors and `window.ChWebSdk` for the Web SDK. Both are deprecated in widget code. They still work, but use `sdk.connectors` and `sdk.web` from `init(sdk)` instead.
+Earlier widget code reached these through globals: `new window.WidgetServiceSDK()` for connectors and `window.ChWebSdk` for the Web SDK. Both are deprecated. They still work, but use `sdk.connectors` and `sdk.web` from `init(sdk)` instead.
 
-Code outside a widget — [script extensions](/custom-widgets/v2/scripts-overview) and third-party scripts on community pages — receives no `sdk` object, so it keeps using `window.ChWebSdk`.
+The SDKs are available only through the `sdk` object your widget's `init(sdk)` receives. Script extensions and other page scripts have no SDK access — if you need community data or a connector, build a [widget](/custom-widgets/v2/build-first-widget).
 
 ## What's Next
 
@@ -10489,7 +10491,7 @@ description: >-
 
 # Web SDK
 
-The **Community Hub Web SDK** is a JavaScript API exposed on community pages. It lets you search content, manage users, subscribe to topics and categories, and interact with the DOM from custom widgets or third-party scripts running in the community frontend. In widgets you reach it as `sdk.web`; in scripts you use the global `window.ChWebSdk`.
+The **Community Hub Web SDK** is a JavaScript API exposed on community pages. It lets you search content, manage users, subscribe to topics and categories, and load scripts from custom widgets running in the community frontend. You reach it as `sdk.web` on the `sdk` object your widget's `init(sdk)` receives.
 
 The SDK is **browser-only**: all methods that call the backend or DOM throw if run outside a browser environment.
 
@@ -10497,8 +10499,7 @@ The SDK is **browser-only**: all methods that call the backend or DOM throw if r
 
 The SDK is bundled with the community frontend. There is no separate npm package.
 
-* **In widgets**, read it from `sdk.web` on the object passed to your widget's `init(sdk)` function. `sdk.web` is `undefined` on host pages that do not load the community frontend, such as embedded widgets on external sites and Skilljar, so check it before use.
-* **In [script extensions](/custom-widgets/v2/scripts-overview)** and other code outside a widget, which receive no `sdk` object, use the global `window.ChWebSdk`. This is not deprecated there.
+Read it from `sdk.web` on the object passed to your widget's `init(sdk)` function. `sdk.web` is `undefined` on host pages that do not load the community frontend, such as embedded widgets on external sites and Skilljar, so check it before use. The SDKs are available only through the `sdk` object your widget's `init(sdk)` receives. Script extensions and other page scripts have no SDK access — if you need community data or a connector, build a [widget](/custom-widgets/v2/build-first-widget).
 
 ```javascript
 export async function init(sdk) {
@@ -10508,17 +10509,16 @@ export async function init(sdk) {
 }
 ```
 
-::: tip
-**No `onReady` in widget code.** `sdk.web.onReady` waits for the page document to load, not for the SDK. Inside `init(sdk)`, after `await sdk.whenReady()`, the document has already loaded, so call `sdk.web` methods directly. Use `window.ChWebSdk.onReady` only in [script extensions](/custom-widgets/v2/scripts-overview).
+::: warning Deprecated: `window.ChWebSdk`
+`window.ChWebSdk` still works, but is no longer supported for new code. Use `sdk.web` from your widget's `init(sdk)` function instead. `sdk.web` has the same namespaces and methods.
 :::
 
-::: warning Deprecated: `ChWebSdk` in widget code
-Using `window.ChWebSdk` (or bare `ChWebSdk`) inside a widget still works, but is no longer recommended. Use `sdk.web` from your widget's `init(sdk)` function instead. `sdk.web` is the same object, with the same namespaces and methods.
-:::
-
-| Before (widget code) | After |
+| Before | After |
 |----------------------|-------|
 | `ChWebSdk.onReady(() => { ... })` | Not needed — put the code directly in `init(sdk)` after `await sdk.whenReady()` |
+| `ChWebSdk.observeElement(...)` / `ChWebSdk.onEvent(...)` | Not available in widgets — query your widget's own markup with `sdk.$()` and attach listeners to those elements |
+| `ChWebSdk.loadStyle(...)` | Not available — put styles in your widget's own CSS |
+| `ChWebSdk.loadScript(...)` | `sdk.web.loadScript(...)` |
 | `ChWebSdk.Content.search(...)` | `sdk.web.Content.search(...)` |
 | `ChWebSdk.Context.User()` | `sdk.web.Context.User()` |
 | `ChWebSdk.User.list(...)` | `sdk.web.User.list(...)` |
@@ -10535,11 +10535,11 @@ export async function init(sdk) {
 }
 ```
 
-See [Examples](examples) for more runnable snippets covering search, subscriptions, users, and DOM interactions.
+See [Examples](examples) for more runnable snippets covering search, subscriptions, users, and script loading.
 
 ## Summary
 
-* [DOM and lifecycle](methods-constructors#dom-and-lifecycle) — wait for the page or an element, bind events, load scripts and styles
+* [Loading scripts](methods-constructors#loading-scripts) — load an external script by URL
 * [Content Methods](methods-constructors#content-methods) — search, like, vote, and manage articles, questions, ideas, and more
 * [Context Methods](methods-constructors#context-methods) — fetch the current viewer's user object (replaces `inSidedData.user`)
 * [User Methods](methods-constructors#user-methods) — look up, search, list, and filter community members
@@ -10548,8 +10548,8 @@ See [Examples](examples) for more runnable snippets covering search, subscriptio
 ## Next Steps
 
 * [User Context](user-context) — complete reference for `Context.User()`, all User methods, the User object schema, field availability, and examples
-* [Reference](methods-constructors) — DOM utilities, Content, User, Subscription, search options, types, and error handling
-* [Examples](examples) — search, subscriptions, users, DOM, and script/style loading
+* [Reference](methods-constructors) — Loading scripts, Content, User, Subscription, search options, types, and error handling
+* [Examples](examples) — search, subscriptions, users, and script loading
 
 ---
 
@@ -10557,8 +10557,8 @@ See [Examples](examples) for more runnable snippets covering search, subscriptio
 url: >-
   https://developer-portal.gainsight.com/docs/sdk/web-sdk/methods-constructors.md
 description: >-
-  Complete API reference for the Community Hub Web SDK — DOM utilities, Content,
-  User, Subscription methods, search options, and error handling.
+  Complete API reference for the Community Hub Web SDK — Loading scripts,
+  Content, User, Subscription methods, search options, and error handling.
 ---
 
 # Reference
@@ -10566,51 +10566,10 @@ description: >-
 Full reference for every method, option, and return type exposed by the Web SDK object (`sdk.web`) on community pages.
 
 ::: info
-Examples assume widget code inside your widget's `init(sdk)` function, after checking that `sdk.web` is defined. In [script extensions](/custom-widgets/v2/scripts-overview), which receive no `sdk` object, substitute `window.ChWebSdk` for `sdk.web`. `window.ChWebSdk` in widget code still works but is deprecated — use `sdk.web`. Scripts keep using `window.ChWebSdk`. See [Web SDK](overview).
+Examples assume widget code inside your widget's `init(sdk)` function, after checking that `sdk.web` is defined. See [Web SDK](overview).
 :::
 
-## DOM and lifecycle
-
-### `onReady(callback)`
-
-Run a callback once the page document has loaded. If the document is already loaded (`complete` or `interactive`), the callback runs immediately; otherwise it runs on `DOMContentLoaded`. It does not wait for the SDK. In widget code you do not need it: inside `init(sdk)`, after `await sdk.whenReady()`, the document has already loaded, so call `sdk.web` methods directly.
-
-```javascript
-window.ChWebSdk.onReady(() => {
-  // Page document has loaded
-})
-```
-
-### `observeElement(selector, callback)`
-
-Wait until an element matching `selector` appears in the DOM, then run `callback` with that element. Uses a `MutationObserver` and disconnects after the element is found.
-
-`observeElement` and `onEvent` search the page `document`, so they cannot find elements inside a widget's own shadow root. Use `sdk.$()` for those. The snippets below are host-page or [script extension](/custom-widgets/v2/scripts-overview) usage.
-
-```javascript
-window.ChWebSdk.observeElement('#my-widget-root', (el) => {
-  el.textContent = 'Widget loaded'
-})
-```
-
-### `onEvent(selector, event, handler, options?)`
-
-Bind an event listener to the first element that matches `selector` (waiting for it via `observeElement` if needed). Returns an **unsubscribe** function to remove the listener.
-
-| Parameter  | Type     | Description                                      |
-|------------|----------|--------------------------------------------------|
-| `selector` | `string` | CSS selector for the target element              |
-| `event`    | `string` | DOM event name (e.g. `'click'`, `'submit'`)      |
-| `handler`  | `function` | Event handler                                 |
-| `options`  | `boolean \| AddEventListenerOptions` | Optional; e.g. `{ once: true }` |
-
-```javascript
-const unsubscribe = window.ChWebSdk.onEvent('.submit-btn', 'click', (ev) => {
-  ev.preventDefault()
-  // ...
-})
-// Later: unsubscribe() to remove the listener
-```
+## Loading scripts
 
 ### `loadScript(src, callback?)`
 
@@ -10620,14 +10579,6 @@ Load an external script by URL. If the script is already present, calls `callbac
 sdk.web.loadScript('https://example.com/plugin.js', () => {
   console.log('Script loaded')
 })
-```
-
-### `loadStyle(href)`
-
-Inject a stylesheet link. No-op if a link with the same `href` already exists.
-
-```javascript
-sdk.web.loadStyle('https://example.com/widget.css')
 ```
 
 ***
@@ -10882,7 +10833,7 @@ description: >-
 This page documents the Web SDK user-context API: fetching the current viewer with `sdk.web.Context.User()` and looking up community members with the `sdk.web.User.*` methods. All run as the visiting user, authorized by the community session cookie.
 
 ::: info Where the examples run
-Examples run inside a widget's `init(sdk)` function, after checking that `sdk.web` is defined. It is `undefined` on embedded widgets and Skilljar host pages. [Script extensions](/custom-widgets/v2/scripts-overview) receive no `sdk` object; they use `window.ChWebSdk` instead. `window.ChWebSdk` in widget code still works but is deprecated — use `sdk.web`. Scripts keep using `window.ChWebSdk`. See [Web SDK](overview).
+Examples run inside a widget's `init(sdk)` function, after checking that `sdk.web` is defined. It is `undefined` on embedded widgets and Skilljar host pages. See [Web SDK](overview).
 :::
 
 ::: tip
@@ -11369,16 +11320,16 @@ QUICK REFERENCE — user context:
 ---
 url: https://developer-portal.gainsight.com/docs/sdk/web-sdk/examples.md
 description: >-
-  Runnable code examples for the Web SDK — search, subscriptions, users, DOM
-  observation, and script loading.
+  Runnable code examples for the Web SDK — search, subscriptions, users, and
+  script loading.
 ---
 
 # Examples
 
-Use these ready-made code snippets to add search, user personalization, and dynamic content to your community pages. Each example is self-contained -- widget examples go in your widget's module script; script examples go in a script extension.
+Use these ready-made code snippets to add search, user personalization, and dynamic content to your community pages. Each example is self-contained -- examples go in your widget's module script.
 
 ::: info Prerequisites
-Widget examples run inside your widget's `init(sdk)` function on a community page where the community frontend has loaded, which makes `sdk.web` available. On other host pages `sdk.web` is `undefined`, so each example checks it first. Script examples have no `init(sdk)` and use `window.ChWebSdk`. See [Web SDK](overview) for availability details.
+Widget examples run inside your widget's `init(sdk)` function on a community page where the community frontend has loaded, which makes `sdk.web` available. On other host pages `sdk.web` is `undefined`, so each example checks it first. See [Web SDK](overview) for availability details.
 :::
 
 ## Search ideas and show titles
@@ -11519,34 +11470,10 @@ export async function init(sdk) {
 }
 ```
 
-## Wait for an element and bind click (script example)
-
-This example runs in a [script extension](/custom-widgets/v2/scripts-overview), which receives no `sdk` object, so it uses `window.ChWebSdk`.
-
-```javascript
-window.ChWebSdk.observeElement('.custom-widget', (el) => {
-  el.innerHTML = '<button class="my-btn">Click</button>'
-  window.ChWebSdk.onEvent('.my-btn', 'click', () => {
-    console.log('Clicked')
-  })
-})
-```
-
-## Load a script and style before using a widget (script example)
-
-This example runs in a [script extension](/custom-widgets/v2/scripts-overview), which receives no `sdk` object, so it uses `window.ChWebSdk`.
-
-```javascript
-window.ChWebSdk.loadStyle('https://example.com/widget.css')
-window.ChWebSdk.loadScript('https://example.com/widget.js', () => {
-  // Widget script is loaded
-})
-```
-
 ## Next Steps
 
 * [User Context](user-context) — complete reference for `Context.User()`, all User methods, and the User object schema
-* [Reference](methods-constructors) — DOM utilities, Content, User, Subscription methods, and error handling
+* [Reference](methods-constructors) — Loading scripts, Content, User, Subscription methods, and error handling
 * [Web SDK](overview) — how the SDK is loaded and when to use each API
 
 ---

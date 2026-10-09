@@ -1,16 +1,16 @@
 ---
 url: https://developer-portal.gainsight.com/docs/sdk/web-sdk/examples.md
 description: >-
-  Runnable code examples for the Web SDK — search, subscriptions, users, DOM
-  observation, and script loading.
+  Runnable code examples for the Web SDK — search, subscriptions, users, and
+  script loading.
 ---
 
 # Examples
 
-Use these ready-made code snippets to add search, user personalization, and dynamic content to your community pages. Each example is self-contained -- widget examples go in your widget's module script; script examples go in a script extension.
+Use these ready-made code snippets to add search, user personalization, and dynamic content to your community pages. Each example is self-contained -- examples go in your widget's module script.
 
 ::: info Prerequisites
-Widget examples run inside your widget's `init(sdk)` function on a community page where the community frontend has loaded, which makes `sdk.web` available. On other host pages `sdk.web` is `undefined`, so each example checks it first. Script examples have no `init(sdk)` and use `window.ChWebSdk`. See [Web SDK](overview) for availability details.
+Widget examples run inside your widget's `init(sdk)` function on a community page where the community frontend has loaded, which makes `sdk.web` available. On other host pages `sdk.web` is `undefined`, so each example checks it first. See [Web SDK](overview) for availability details.
 :::
 
 ## Search ideas and show titles
@@ -151,32 +151,8 @@ export async function init(sdk) {
 }
 ```
 
-## Wait for an element and bind click (script example)
-
-This example runs in a [script extension](/custom-widgets/v2/scripts-overview), which receives no `sdk` object, so it uses `window.ChWebSdk`.
-
-```javascript
-window.ChWebSdk.observeElement('.custom-widget', (el) => {
-  el.innerHTML = '<button class="my-btn">Click</button>'
-  window.ChWebSdk.onEvent('.my-btn', 'click', () => {
-    console.log('Clicked')
-  })
-})
-```
-
-## Load a script and style before using a widget (script example)
-
-This example runs in a [script extension](/custom-widgets/v2/scripts-overview), which receives no `sdk` object, so it uses `window.ChWebSdk`.
-
-```javascript
-window.ChWebSdk.loadStyle('https://example.com/widget.css')
-window.ChWebSdk.loadScript('https://example.com/widget.js', () => {
-  // Widget script is loaded
-})
-```
-
 ## Next Steps
 
 * [User Context](user-context) — complete reference for `Context.User()`, all User methods, and the User object schema
-* [Reference](methods-constructors) — DOM utilities, Content, User, Subscription methods, and error handling
+* [Reference](methods-constructors) — Loading scripts, Content, User, Subscription methods, and error handling
 * [Web SDK](overview) — how the SDK is loaded and when to use each API
