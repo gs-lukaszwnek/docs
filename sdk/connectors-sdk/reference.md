@@ -95,7 +95,7 @@ The request body goes in the `payload` option as a plain JSON object. `body` is 
 
 ### Path parameter validation
 
-`pathParams` is validated synchronously at the SDK boundary before any network call. The SDK throws `ConnectorBoundaryError` on:
+`pathParams` is validated by the SDK before any network call. The returned promise rejects, and no request is sent, on:
 
 * An empty or whitespace-only key (e.g. `{ "": "x" }`)
 * A value whose type is not `string | number` — catches untyped JS callers passing `null`, `undefined`, booleans, objects, or arrays
@@ -106,14 +106,9 @@ Omitting `pathParams` or passing `{}` sends no header — the request goes out u
 
 ## Error handling
 
-Wrap `execute` calls in a try/catch to handle network errors, timeouts, and connector failures:
+`execute` returns a promise that rejects when the call fails — a network error, a timeout, an invalid `pathParams` value, or an error response from the connector or the API behind it. Wrap calls in `try`/`catch` and read `error.message`:
 
 ```javascript
-import {
-  ConnectorBoundaryError,
-  ConnectorExecuteError
-} from "@gainsight-hub/connectors-sdk";
-
 try {
   const data = await sdk.connectors.execute({
     permalink: "my-connector",
@@ -122,45 +117,12 @@ try {
   });
   console.log(data);
 } catch (error) {
-  if (error instanceof ConnectorBoundaryError) {
-    // Client-side rejection — invalid pathParams shape, composite + pathParams, etc.
-    console.error("Boundary rejection:", error.reason);
-  } else if (error instanceof ConnectorExecuteError) {
-    switch (error.code) {
-      case "MISSING_PATH_PARAMETERS":
-      case "INVALID_PATH_PARAMETERS":
-        // error.params: string[] — the failing keys
-        console.error("Path params failed:", error.code, error.params);
-        break;
-      case "CONNECTOR_MISCONFIGURED":
-        // error.detail: string — operator-facing detail
-        console.error("Misconfigured:", error.detail);
-        break;
-      default:
-        // Legacy shape — error.failureScope / error.reason / error.requestId / error.status
-        console.error("Execute failed:", error.failureScope, error.reason, error.status);
-    }
-  } else {
-    // Network / timeout / unknown
-    console.error("Connector execution failed:", error.message);
-  }
+  console.error("Connector request failed:", error.message);
+  // show a fallback in your widget
 }
 ```
 
-`ConnectorBoundaryError` is thrown synchronously before any HTTP call — it signals a malformed call. `ConnectorExecuteError` normalises two server-error shapes: the envelope `{ success: false, errors: { code, detail, scope?, params? }, request_id }` returned for connector execution errors — path-parameter validation (HTTP 400) as well as connection, template, and authentication failures (HTTP 422/502/500) — exposed as optional `code` / `params` / `detail` fields, and the legacy `{ failure_scope, reason, request_id }` (exposed as `failureScope` / `reason`). Branch on `error.code` to handle envelope errors; fall back to `failureScope` for legacy ones.
-
-Common failure scenarios:
-
-| Scenario | Cause | Error class |
-|----------|-------|-------------|
-| Network error | The backend is unreachable | `Error` |
-| Timeout | Request exceeded the configured `timeout` (default 30s) | `Error` |
-| Connector not found | The `permalink` does not match any existing connector | `Error` (HTTP 404) |
-| Authentication failure | The connector's auth credentials are invalid or expired | `ConnectorExecuteError` |
-| Upstream error | The destination API returned an error | `ConnectorExecuteError` |
-| Invalid `pathParams` shape | Empty key, wrong value type, oversized payload, or passed to composite | `ConnectorBoundaryError` |
-| Missing required path param value | URL references {{ pathParams.X }} but caller omitted one or more keys from `pathParams` | `ConnectorExecuteError` (`code: "MISSING_PATH_PARAMETERS"`) |
-| Path param value fails URL-safe validation | Caller supplied a value containing characters outside `[A-Za-z0-9._~-]`, or a path-traversal segment (`..`) | `ConnectorExecuteError` (`code: "INVALID_PATH_PARAMETERS"`) |
+For path-parameter errors returned by the server, `error.code` names the problem (`MISSING_PATH_PARAMETERS` or `INVALID_PATH_PARAMETERS`) — see [Dynamic URL Path Segments](/connectors/dynamic-url-paths#validation-and-errors).
 
 ## Next Steps
 

@@ -213,7 +213,7 @@ export async function init(sdk) {
 The HTTP method is always POST — it is not a configurable parameter. The SDK owns this detail so you do not need to specify it.
 
 ::: warning Path parameters are not supported on composite connectors
-`pathParams` is a simple-connector concept only. Passing `pathParams` to `sdk.connectors.composite.execute()` throws `ConnectorBoundaryError` synchronously — no request is sent. If you need per-call path values inside a composite flow, embed them in the step URLs using template variables from previous steps' results. See [Dynamic URL Path Segments](dynamic-url-paths) for the simple-connector pattern.
+`pathParams` is a simple-connector concept only. Passing `pathParams` to `sdk.connectors.composite.execute()` rejects — no request is sent. If you need per-call path values inside a composite flow, embed them in the step URLs using template variables from previous steps' results. See [Dynamic URL Path Segments](dynamic-url-paths) for the simple-connector pattern.
 :::
 
 To pass a request body, include the `payload` option as a plain object. The SDK handles serialisation. Use `queryParams` to append URL query parameters — these are available in step templates as `request.query_parameters.<key>`:

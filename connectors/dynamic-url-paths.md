@@ -76,7 +76,7 @@ Missing wins over invalid: if any required key is missing, only `MISSING_PATH_PA
 
 ## Composite connectors
 
-Path parameters are **not supported** on [composite connectors](composite-connectors). The SDK's `sdk.connectors.composite.execute` throws `ConnectorBoundaryError` synchronously if `pathParams` is supplied — no request is sent. If you need per-call path values in a composite flow, compose simple connectors from inside the composite's step URLs using the step result variables.
+Path parameters are **not supported** on [composite connectors](composite-connectors). The SDK's `sdk.connectors.composite.execute` rejects if `pathParams` is supplied — no request is sent. If you need per-call path values in a composite flow, compose simple connectors from inside the composite's step URLs using the step result variables.
 
 ## SDK reference
 
@@ -94,39 +94,26 @@ await sdk.connectors.execute({
 //   X-Path-Params: user_id=42&post_slug=hello-world
 ```
 
-Boundary validation runs synchronously before any network call:
+The SDK validates `pathParams` before any network call. On any of these, the returned promise rejects and no request is sent:
 
 | Trigger | SDK behaviour |
 |---|---|
-| Empty / whitespace-only key (`{ "": "x" }`) | Throws `ConnectorBoundaryError` |
-| Value whose type is not `string` or `number` (e.g. `null`, an object, a boolean) | Throws `ConnectorBoundaryError` |
-| Serialized payload over 4096 characters | Throws `ConnectorBoundaryError` |
-| Passed to `composite.execute` with at least one key | Throws `ConnectorBoundaryError` |
+| Empty / whitespace-only key (`{ "": "x" }`) | Rejects |
+| Value whose type is not `string` or `number` (e.g. `null`, an object, a boolean) | Rejects |
+| Serialized payload over 4096 characters | Rejects |
+| Passed to `composite.execute` with at least one key | Rejects |
 | Omitted or `{}` | No header sent — request goes out unchanged |
 
-`ConnectorBoundaryError` is distinct from `ConnectorExecuteError` (which normalises server-side failures from the response body). For path-parameter validation failures the server returns the envelope shape `{ success: false, errors: { code, params, detail }, request_id }`; `ConnectorExecuteError` exposes those as optional `code`, `params`, and `detail` fields. Branch on `err.code` to handle each error:
+If the values pass the SDK but fail server-side validation, the promise rejects with `err.code` set to `MISSING_PATH_PARAMETERS` or `INVALID_PATH_PARAMETERS`:
 
 ```javascript
-import { ConnectorBoundaryError, ConnectorExecuteError } from "@gainsight-hub/connectors-sdk";
-
 try {
-  await sdk.connectors.execute({ permalink: "...", method: "GET", pathParams: { id } });
+  await sdk.connectors.execute({ permalink: "user-posts", method: "GET", pathParams: { id } });
 } catch (err) {
-  if (err instanceof ConnectorBoundaryError) {
-    // Client-side rejection — fix the caller
-  } else if (err instanceof ConnectorExecuteError) {
-    switch (err.code) {
-      case "MISSING_PATH_PARAMETERS":
-      case "INVALID_PATH_PARAMETERS":
-        // err.params: string[] — the failing keys
-        break;
-      case "CONNECTOR_MISCONFIGURED":
-        // err.detail: string — operator-facing detail
-        break;
-      default:
-        // Legacy shape (or an unrecognised envelope code) — err.failureScope / err.reason / err.requestId / err.status
-    }
+  if (err.code === "MISSING_PATH_PARAMETERS" || err.code === "INVALID_PATH_PARAMETERS") {
+    // err.params lists the failing keys
   }
+  console.error("Connector request failed:", err.message);
 }
 ```
 
