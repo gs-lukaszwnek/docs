@@ -10048,6 +10048,7 @@ This page documents the `sdk` object the platform passes to your widget's `init(
 | `getProps<T>()`      | `T`              | Current widget props (from configuration)      |
 | `setProps(props)`    | `void`           | Update props (emits `propsChanged`)            |
 | `getVersionInfo()`   | `VersionInfo`    | `{ version, gitSha, buildTime }`               |
+| `getDesignTokens()`  | `Record<string, string \| null>` | Current theme design tokens, keyed by token name without the leading `--` (e.g. `config--main-color-brand` for `--config--main-color-brand`). Returns a copy |
 | `whenReady()`        | `Promise<SDK>`   | Resolves once initialization completes         |
 | `$(selector)`        | `Element \| null` | Shorthand for `shadowRoot.querySelector(selector)` |
 | `$$(selector)`       | `Element[]`      | Shorthand for `shadowRoot.querySelectorAll(selector)` — returns an array, not a NodeList |
@@ -10062,6 +10063,7 @@ This page documents the `sdk` object the platform passes to your widget's `init(
 | `propsChanged`        | `Record<string, unknown>`            | Widget configuration changes         |
 | `destroy`             | `undefined`                          | Widget removed from DOM              |
 | `error`               | `{ message: string, error?: Error }` | Module load or initialization error  |
+| `designTokensChanged` | `Record<string, string \| null>`     | Theme design tokens change while the page is open, e.g. live edits in the theme configurator. Payload is the full token map, same shape as `getDesignTokens()` |
 
 ## Next Steps
 
