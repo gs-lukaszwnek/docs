@@ -164,7 +164,7 @@ export async function init(sdk) {
 
 ## Wait for an element and bind click (script example)
 
-Scripts receive no `init(sdk)` object, so this example uses `window.ChWebSdk`.
+This example runs in a [script extension](/custom-widgets/v2/scripts-overview), which receives no `sdk` object, so it uses `window.ChWebSdk`.
 
 ```javascript
 window.ChWebSdk.observeElement('.custom-widget', (el) => {
@@ -177,7 +177,7 @@ window.ChWebSdk.observeElement('.custom-widget', (el) => {
 
 ## Load a script and style before using a widget (script example)
 
-Scripts receive no `init(sdk)` object, so this example uses `window.ChWebSdk`.
+This example runs in a [script extension](/custom-widgets/v2/scripts-overview), which receives no `sdk` object, so it uses `window.ChWebSdk`.
 
 ```javascript
 window.ChWebSdk.loadStyle('https://example.com/widget.css')

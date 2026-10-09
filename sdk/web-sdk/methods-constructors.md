@@ -11,7 +11,7 @@ description: >-
 Full reference for every method, option, and return type exposed by the Web SDK object (`sdk.web`) on community pages.
 
 ::: info
-Examples assume widget code inside your widget's `init(sdk)` function, after checking that `sdk.web` is defined. In scripts, which have no `init(sdk)`, substitute `window.ChWebSdk` for `sdk.web`. `window.ChWebSdk` in widget code still works but is deprecated — use `sdk.web`. Scripts keep using `window.ChWebSdk`. See [Web SDK](overview).
+Examples assume widget code inside your widget's `init(sdk)` function, after checking that `sdk.web` is defined. In [script extensions](/custom-widgets/v2/scripts-overview), which receive no `sdk` object, substitute `window.ChWebSdk` for `sdk.web`. `window.ChWebSdk` in widget code still works but is deprecated — use `sdk.web`. Scripts keep using `window.ChWebSdk`. See [Web SDK](overview).
 :::
 
 ## DOM and lifecycle

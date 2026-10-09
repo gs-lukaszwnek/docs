@@ -17,7 +17,7 @@ The SDK is **browser-only**: all methods that call the backend or DOM throw if r
 The SDK is bundled with the community frontend. There is no separate npm package.
 
 * **In widgets**, read it from `sdk.web` on the object passed to your widget's `init(sdk)` function. `sdk.web` is `undefined` on host pages that do not load the community frontend, such as embedded widgets on external sites and Skilljar, so check it before use.
-* **In scripts**, which receive no `init(sdk)` object, use the global `window.ChWebSdk`. This is not deprecated for scripts.
+* **In [script extensions](/custom-widgets/v2/scripts-overview)** and other code outside a widget, which receive no `sdk` object, use the global `window.ChWebSdk`. This is not deprecated there.
 
 ```javascript
 export async function init(sdk) {

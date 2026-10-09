@@ -9975,8 +9975,6 @@ The SDK is the `sdk` object the platform passes to your widget's `init(sdk)` fun
 | **Connectors** | `sdk.connectors` | Call [connectors](/connectors/) from widget code to reach external APIs — see the [Connectors SDK](/sdk/connectors-sdk/overview). |
 | **Web** | `sdk.web` | Search content, users, and subscriptions on community pages — see the [Web SDK](/sdk/web-sdk/overview). |
 
-Scripts have no `init(sdk)` function and use `window.ChWebSdk` instead.
-
 New to widgets? Start with [Your First Widget](/custom-widgets/v2/build-first-widget). To call an external API from a widget, see [Calling from Widget Code](/connectors/calling-from-widgets). For how the three parts relate, read [SDK Concepts](/sdk/concepts).
 
 ---
@@ -10027,7 +10025,7 @@ A widget can use all three at once — read its props from the runtime, call a c
 
 Earlier widget code reached these through globals: `new window.WidgetServiceSDK()` for connectors and `window.ChWebSdk` for the Web SDK. Both are deprecated in widget code. They still work, but use `sdk.connectors` and `sdk.web` from `init(sdk)` instead.
 
-Scripts — script extensions and third-party scripts — have no `init(sdk)` function and receive no `sdk` object, so they keep using `window.ChWebSdk`.
+Code outside a widget — [script extensions](/custom-widgets/v2/scripts-overview) and third-party scripts on community pages — receives no `sdk` object, so it keeps using `window.ChWebSdk`.
 
 ## What's Next
 
@@ -10501,7 +10499,7 @@ The SDK is **browser-only**: all methods that call the backend or DOM throw if r
 The SDK is bundled with the community frontend. There is no separate npm package.
 
 * **In widgets**, read it from `sdk.web` on the object passed to your widget's `init(sdk)` function. `sdk.web` is `undefined` on host pages that do not load the community frontend, such as embedded widgets on external sites and Skilljar, so check it before use.
-* **In scripts**, which receive no `init(sdk)` object, use the global `window.ChWebSdk`. This is not deprecated for scripts.
+* **In [script extensions](/custom-widgets/v2/scripts-overview)** and other code outside a widget, which receive no `sdk` object, use the global `window.ChWebSdk`. This is not deprecated there.
 
 ```javascript
 export async function init(sdk) {
@@ -10567,7 +10565,7 @@ description: >-
 Full reference for every method, option, and return type exposed by the Web SDK object (`sdk.web`) on community pages.
 
 ::: info
-Examples assume widget code inside your widget's `init(sdk)` function, after checking that `sdk.web` is defined. In scripts, which have no `init(sdk)`, substitute `window.ChWebSdk` for `sdk.web`. `window.ChWebSdk` in widget code still works but is deprecated — use `sdk.web`. Scripts keep using `window.ChWebSdk`. See [Web SDK](overview).
+Examples assume widget code inside your widget's `init(sdk)` function, after checking that `sdk.web` is defined. In [script extensions](/custom-widgets/v2/scripts-overview), which receive no `sdk` object, substitute `window.ChWebSdk` for `sdk.web`. `window.ChWebSdk` in widget code still works but is deprecated — use `sdk.web`. Scripts keep using `window.ChWebSdk`. See [Web SDK](overview).
 :::
 
 ## DOM and lifecycle
@@ -10883,7 +10881,7 @@ description: >-
 This page documents the Web SDK user-context API: fetching the current viewer with `sdk.web.Context.User()` and looking up community members with the `sdk.web.User.*` methods. All run as the visiting user, authorized by the community session cookie.
 
 ::: info Where the examples run
-Examples run inside a widget's `init(sdk)` function, after checking that `sdk.web` is defined. It is `undefined` on embedded widgets and Skilljar host pages. Scripts have no `init(sdk)`; they use `window.ChWebSdk` instead. `window.ChWebSdk` in widget code still works but is deprecated — use `sdk.web`. Scripts keep using `window.ChWebSdk`. See [Web SDK](overview).
+Examples run inside a widget's `init(sdk)` function, after checking that `sdk.web` is defined. It is `undefined` on embedded widgets and Skilljar host pages. [Script extensions](/custom-widgets/v2/scripts-overview) receive no `sdk` object; they use `window.ChWebSdk` instead. `window.ChWebSdk` in widget code still works but is deprecated — use `sdk.web`. Scripts keep using `window.ChWebSdk`. See [Web SDK](overview).
 :::
 
 ::: tip
@@ -11537,7 +11535,7 @@ export async function init(sdk) {
 
 ## Wait for an element and bind click (script example)
 
-Scripts receive no `init(sdk)` object, so this example uses `window.ChWebSdk`.
+This example runs in a [script extension](/custom-widgets/v2/scripts-overview), which receives no `sdk` object, so it uses `window.ChWebSdk`.
 
 ```javascript
 window.ChWebSdk.observeElement('.custom-widget', (el) => {
@@ -11550,7 +11548,7 @@ window.ChWebSdk.observeElement('.custom-widget', (el) => {
 
 ## Load a script and style before using a widget (script example)
 
-Scripts receive no `init(sdk)` object, so this example uses `window.ChWebSdk`.
+This example runs in a [script extension](/custom-widgets/v2/scripts-overview), which receives no `sdk` object, so it uses `window.ChWebSdk`.
 
 ```javascript
 window.ChWebSdk.loadStyle('https://example.com/widget.css')
