@@ -21,12 +21,15 @@ The SDK is bundled with the community frontend. There is no separate npm package
 
 ```javascript
 export async function init(sdk) {
+  await sdk.whenReady()
   if (!sdk.web) return // no Web SDK on this host page (e.g. embedded widgets, Skilljar)
-  sdk.web.onReady(() => {
-    console.log('SDK ready')
-  })
+  console.log('Web SDK available')
 }
 ```
+
+::: tip
+**No `onReady` in widget code.** `sdk.web.onReady` waits for the page document to load, not for the SDK. Inside `init(sdk)`, after `await sdk.whenReady()`, the document has already loaded, so call `sdk.web` methods directly. Use `window.ChWebSdk.onReady` only in [script extensions](/custom-widgets/v2/scripts-overview).
+:::
 
 ::: warning Deprecated: `ChWebSdk` in widget code
 Using `window.ChWebSdk` (or bare `ChWebSdk`) inside a widget still works, but is no longer recommended. Use `sdk.web` from your widget's `init(sdk)` function instead. `sdk.web` is the same object, with the same namespaces and methods.
@@ -34,7 +37,7 @@ Using `window.ChWebSdk` (or bare `ChWebSdk`) inside a widget still works, but is
 
 | Before (widget code) | After |
 |----------------------|-------|
-| `ChWebSdk.onReady(...)` | `sdk.web.onReady(...)` |
+| `ChWebSdk.onReady(() => { ... })` | Not needed — put the code directly in `init(sdk)` after `await sdk.whenReady()` |
 | `ChWebSdk.Content.search(...)` | `sdk.web.Content.search(...)` |
 | `ChWebSdk.Context.User()` | `sdk.web.Context.User()` |
 | `ChWebSdk.User.list(...)` | `sdk.web.User.list(...)` |
@@ -44,11 +47,10 @@ Using `window.ChWebSdk` (or bare `ChWebSdk`) inside a widget still works, but is
 
 ```javascript
 export async function init(sdk) {
+  await sdk.whenReady()
   if (!sdk.web) return // no Web SDK on this host page (e.g. embedded widgets, Skilljar)
-  sdk.web.onReady(async () => {
-    const results = await sdk.web.Content.search('feature request', { limit: 10 })
-    console.log(results)
-  })
+  const results = await sdk.web.Content.search('feature request', { limit: 10 })
+  console.log(results)
 }
 ```
 

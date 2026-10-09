@@ -42,23 +42,22 @@ Private account data is never included, even for the signed-in viewer: email add
 
 ```javascript
 export async function init(sdk) {
+  await sdk.whenReady()
   if (!sdk.web) return
 
-  sdk.web.onReady(async () => {
-    const me = await sdk.web.Context.User()
+  const me = await sdk.web.Context.User()
 
-    if (me.userId === null) {
-      // Guest — show a login prompt or public-only content
-      return
-    }
+  if (me.userId === null) {
+    // Guest — show a login prompt or public-only content
+    return
+  }
 
-    // Authenticated — personalize the UI
-    console.log(me.username)        // 'janedoe'
-    console.log(me.userId)          // 101
-    console.log(me.rank?.name)      // 'Regular'
-    console.log(me.badges)          // [{ id: 100, title: 'First post', url: 'https://assets.example.com/…_thumb.png' }]
-    console.log(me.profileFields)   // [{ id: 3, title: 'Seniority', value: 'senior', ... }]
-  })
+  // Authenticated — personalize the UI
+  console.log(me.username)        // 'janedoe'
+  console.log(me.userId)          // 101
+  console.log(me.rank?.name)      // 'Regular'
+  console.log(me.badges)          // [{ id: 100, title: 'First post', url: 'https://assets.example.com/…_thumb.png' }]
+  console.log(me.profileFields)   // [{ id: 3, title: 'Seniority', value: 'senior', ... }]
 }
 ```
 
@@ -157,18 +156,17 @@ There is no sort by total post count. `topics` and `replies` sort separately, an
 
 ```javascript
 export async function init(sdk) {
+  await sdk.whenReady()
   if (!sdk.web) return
 
-  sdk.web.onReady(async () => {
-    const { totalItems, items } = await sdk.web.User.list({
-      role: [7],
-      sort: 'lastVisit',
-      order: 'desc',
-      size: 20
-    })
-    console.log(`${items.length} of ${totalItems} moderators`)
-    items.forEach((u) => console.log(u.username, u.lastVisit))
+  const { totalItems, items } = await sdk.web.User.list({
+    role: [7],
+    sort: 'lastVisit',
+    order: 'desc',
+    size: 20
   })
+  console.log(`${items.length} of ${totalItems} moderators`)
+  items.forEach((u) => console.log(u.username, u.lastVisit))
 }
 ```
 
@@ -176,20 +174,19 @@ export async function init(sdk) {
 
 ```javascript
 export async function init(sdk) {
+  await sdk.whenReady()
   if (!sdk.web) return
 
-  sdk.web.onReady(async () => {
-    const size = 100
-    let page = 1
-    let total = Infinity
+  const size = 100
+  let page = 1
+  let total = Infinity
 
-    while ((page - 1) * size < total) {
-      const result = await sdk.web.User.list({ page, size })
-      total = result.totalItems
-      result.items.forEach((u) => console.log(u.userId, u.username))
-      page++
-    }
-  })
+  while ((page - 1) * size < total) {
+    const result = await sdk.web.User.list({ page, size })
+    total = result.totalItems
+    result.items.forEach((u) => console.log(u.userId, u.username))
+    page++
+  }
 }
 ```
 
@@ -443,20 +440,19 @@ All methods throw on failure. Wrap calls in `try/catch`:
 
 ```javascript
 export async function init(sdk) {
+  await sdk.whenReady()
   if (!sdk.web) return
 
-  sdk.web.onReady(async () => {
-    try {
-      const me = await sdk.web.Context.User()
-      if (me.userId === null) {
-        // Guest — handle gracefully
-        return
-      }
-      // Use me.username, me.rank, etc.
-    } catch (err) {
-      console.error('Failed to fetch user context:', err.message)
+  try {
+    const me = await sdk.web.Context.User()
+    if (me.userId === null) {
+      // Guest — handle gracefully
+      return
     }
-  })
+    // Use me.username, me.rank, etc.
+  } catch (err) {
+    console.error('Failed to fetch user context:', err.message)
+  }
 }
 ```
 

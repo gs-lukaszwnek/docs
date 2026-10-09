@@ -18,11 +18,11 @@ Examples assume widget code inside your widget's `init(sdk)` function, after che
 
 ### `onReady(callback)`
 
-Run a callback when the DOM is ready. If the document is already loaded (`complete` or `interactive`), the callback runs immediately; otherwise it runs on `DOMContentLoaded`.
+Run a callback once the page document has loaded. If the document is already loaded (`complete` or `interactive`), the callback runs immediately; otherwise it runs on `DOMContentLoaded`. It does not wait for the SDK. In widget code you do not need it: inside `init(sdk)`, after `await sdk.whenReady()`, the document has already loaded, so call `sdk.web` methods directly.
 
 ```javascript
-sdk.web.onReady(() => {
-  // Safe to use DOM and SDK
+window.ChWebSdk.onReady(() => {
+  // Page document has loaded
 })
 ```
 
@@ -30,8 +30,10 @@ sdk.web.onReady(() => {
 
 Wait until an element matching `selector` appears in the DOM, then run `callback` with that element. Uses a `MutationObserver` and disconnects after the element is found.
 
+`observeElement` and `onEvent` search the page `document`, so they cannot find elements inside a widget's own shadow root. Use `sdk.$()` for those. The snippets below are host-page or [script extension](/custom-widgets/v2/scripts-overview) usage.
+
 ```javascript
-sdk.web.observeElement('#my-widget-root', (el) => {
+window.ChWebSdk.observeElement('#my-widget-root', (el) => {
   el.textContent = 'Widget loaded'
 })
 ```
@@ -48,7 +50,7 @@ Bind an event listener to the first element that matches `selector` (waiting for
 | `options`  | `boolean \| AddEventListenerOptions` | Optional; e.g. `{ once: true }` |
 
 ```javascript
-const unsubscribe = sdk.web.onEvent('.submit-btn', 'click', (ev) => {
+const unsubscribe = window.ChWebSdk.onEvent('.submit-btn', 'click', (ev) => {
   ev.preventDefault()
   // ...
 })
@@ -164,14 +166,12 @@ Fetch the current user. Always returns a `User` object — a guest resolves to t
 **Browser-only.** Takes no parameters. For a signed-in visitor `badges` and `profileFields` are always present and `rank` is present when the user has one; the guest result has no `profileFields` or `rank`. No private account data (email, PM counts, login source) is ever returned. The response does include the viewer's own private profile fields, which any script on the page can read; see [User Context](user-context#context-current-viewer).
 
 ```javascript
-sdk.web.onReady(async () => {
-  const me = await sdk.web.Context.User()
-  if (me.userId === null) {
-    // Guest — show login prompt
-    return
-  }
-  console.log(me.username, me.rank?.name, me.badges)
-})
+const me = await sdk.web.Context.User()
+if (me.userId === null) {
+  // Guest — show login prompt
+  return
+}
+console.log(me.username, me.rank?.name, me.badges)
 ```
 
 See [User Context](user-context) for the complete reference — full User object schema, guest projection, field availability by method, and all examples.

@@ -23,10 +23,9 @@ Nothing on `sdk` needs to be constructed or loaded: it already exists by the tim
 
 ```javascript
 export async function init(sdk) {
+  await sdk.whenReady()
   if (!sdk.web) return // no Web SDK on this host page (e.g. embedded widgets, Skilljar)
-  sdk.web.onReady(async () => {
-    // ...
-  })
+  // ...
 }
 ```
 

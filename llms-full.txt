@@ -10004,10 +10004,9 @@ Nothing on `sdk` needs to be constructed or loaded: it already exists by the tim
 
 ```javascript
 export async function init(sdk) {
+  await sdk.whenReady()
   if (!sdk.web) return // no Web SDK on this host page (e.g. embedded widgets, Skilljar)
-  sdk.web.onReady(async () => {
-    // ...
-  })
+  // ...
 }
 ```
 
@@ -10503,12 +10502,15 @@ The SDK is bundled with the community frontend. There is no separate npm package
 
 ```javascript
 export async function init(sdk) {
+  await sdk.whenReady()
   if (!sdk.web) return // no Web SDK on this host page (e.g. embedded widgets, Skilljar)
-  sdk.web.onReady(() => {
-    console.log('SDK ready')
-  })
+  console.log('Web SDK available')
 }
 ```
+
+::: tip
+**No `onReady` in widget code.** `sdk.web.onReady` waits for the page document to load, not for the SDK. Inside `init(sdk)`, after `await sdk.whenReady()`, the document has already loaded, so call `sdk.web` methods directly. Use `window.ChWebSdk.onReady` only in [script extensions](/custom-widgets/v2/scripts-overview).
+:::
 
 ::: warning Deprecated: `ChWebSdk` in widget code
 Using `window.ChWebSdk` (or bare `ChWebSdk`) inside a widget still works, but is no longer recommended. Use `sdk.web` from your widget's `init(sdk)` function instead. `sdk.web` is the same object, with the same namespaces and methods.
@@ -10516,7 +10518,7 @@ Using `window.ChWebSdk` (or bare `ChWebSdk`) inside a widget still works, but is
 
 | Before (widget code) | After |
 |----------------------|-------|
-| `ChWebSdk.onReady(...)` | `sdk.web.onReady(...)` |
+| `ChWebSdk.onReady(() => { ... })` | Not needed — put the code directly in `init(sdk)` after `await sdk.whenReady()` |
 | `ChWebSdk.Content.search(...)` | `sdk.web.Content.search(...)` |
 | `ChWebSdk.Context.User()` | `sdk.web.Context.User()` |
 | `ChWebSdk.User.list(...)` | `sdk.web.User.list(...)` |
@@ -10526,11 +10528,10 @@ Using `window.ChWebSdk` (or bare `ChWebSdk`) inside a widget still works, but is
 
 ```javascript
 export async function init(sdk) {
+  await sdk.whenReady()
   if (!sdk.web) return // no Web SDK on this host page (e.g. embedded widgets, Skilljar)
-  sdk.web.onReady(async () => {
-    const results = await sdk.web.Content.search('feature request', { limit: 10 })
-    console.log(results)
-  })
+  const results = await sdk.web.Content.search('feature request', { limit: 10 })
+  console.log(results)
 }
 ```
 
@@ -10572,11 +10573,11 @@ Examples assume widget code inside your widget's `init(sdk)` function, after che
 
 ### `onReady(callback)`
 
-Run a callback when the DOM is ready. If the document is already loaded (`complete` or `interactive`), the callback runs immediately; otherwise it runs on `DOMContentLoaded`.
+Run a callback once the page document has loaded. If the document is already loaded (`complete` or `interactive`), the callback runs immediately; otherwise it runs on `DOMContentLoaded`. It does not wait for the SDK. In widget code you do not need it: inside `init(sdk)`, after `await sdk.whenReady()`, the document has already loaded, so call `sdk.web` methods directly.
 
 ```javascript
-sdk.web.onReady(() => {
-  // Safe to use DOM and SDK
+window.ChWebSdk.onReady(() => {
+  // Page document has loaded
 })
 ```
 
@@ -10584,8 +10585,10 @@ sdk.web.onReady(() => {
 
 Wait until an element matching `selector` appears in the DOM, then run `callback` with that element. Uses a `MutationObserver` and disconnects after the element is found.
 
+`observeElement` and `onEvent` search the page `document`, so they cannot find elements inside a widget's own shadow root. Use `sdk.$()` for those. The snippets below are host-page or [script extension](/custom-widgets/v2/scripts-overview) usage.
+
 ```javascript
-sdk.web.observeElement('#my-widget-root', (el) => {
+window.ChWebSdk.observeElement('#my-widget-root', (el) => {
   el.textContent = 'Widget loaded'
 })
 ```
@@ -10602,7 +10605,7 @@ Bind an event listener to the first element that matches `selector` (waiting for
 | `options`  | `boolean \| AddEventListenerOptions` | Optional; e.g. `{ once: true }` |
 
 ```javascript
-const unsubscribe = sdk.web.onEvent('.submit-btn', 'click', (ev) => {
+const unsubscribe = window.ChWebSdk.onEvent('.submit-btn', 'click', (ev) => {
   ev.preventDefault()
   // ...
 })
@@ -10718,14 +10721,12 @@ Fetch the current user. Always returns a `User` object — a guest resolves to t
 **Browser-only.** Takes no parameters. For a signed-in visitor `badges` and `profileFields` are always present and `rank` is present when the user has one; the guest result has no `profileFields` or `rank`. No private account data (email, PM counts, login source) is ever returned. The response does include the viewer's own private profile fields, which any script on the page can read; see [User Context](user-context#context-current-viewer).
 
 ```javascript
-sdk.web.onReady(async () => {
-  const me = await sdk.web.Context.User()
-  if (me.userId === null) {
-    // Guest — show login prompt
-    return
-  }
-  console.log(me.username, me.rank?.name, me.badges)
-})
+const me = await sdk.web.Context.User()
+if (me.userId === null) {
+  // Guest — show login prompt
+  return
+}
+console.log(me.username, me.rank?.name, me.badges)
 ```
 
 See [User Context](user-context) for the complete reference — full User object schema, guest projection, field availability by method, and all examples.
@@ -10912,23 +10913,22 @@ Private account data is never included, even for the signed-in viewer: email add
 
 ```javascript
 export async function init(sdk) {
+  await sdk.whenReady()
   if (!sdk.web) return
 
-  sdk.web.onReady(async () => {
-    const me = await sdk.web.Context.User()
+  const me = await sdk.web.Context.User()
 
-    if (me.userId === null) {
-      // Guest — show a login prompt or public-only content
-      return
-    }
+  if (me.userId === null) {
+    // Guest — show a login prompt or public-only content
+    return
+  }
 
-    // Authenticated — personalize the UI
-    console.log(me.username)        // 'janedoe'
-    console.log(me.userId)          // 101
-    console.log(me.rank?.name)      // 'Regular'
-    console.log(me.badges)          // [{ id: 100, title: 'First post', url: 'https://assets.example.com/…_thumb.png' }]
-    console.log(me.profileFields)   // [{ id: 3, title: 'Seniority', value: 'senior', ... }]
-  })
+  // Authenticated — personalize the UI
+  console.log(me.username)        // 'janedoe'
+  console.log(me.userId)          // 101
+  console.log(me.rank?.name)      // 'Regular'
+  console.log(me.badges)          // [{ id: 100, title: 'First post', url: 'https://assets.example.com/…_thumb.png' }]
+  console.log(me.profileFields)   // [{ id: 3, title: 'Seniority', value: 'senior', ... }]
 }
 ```
 
@@ -11027,18 +11027,17 @@ There is no sort by total post count. `topics` and `replies` sort separately, an
 
 ```javascript
 export async function init(sdk) {
+  await sdk.whenReady()
   if (!sdk.web) return
 
-  sdk.web.onReady(async () => {
-    const { totalItems, items } = await sdk.web.User.list({
-      role: [7],
-      sort: 'lastVisit',
-      order: 'desc',
-      size: 20
-    })
-    console.log(`${items.length} of ${totalItems} moderators`)
-    items.forEach((u) => console.log(u.username, u.lastVisit))
+  const { totalItems, items } = await sdk.web.User.list({
+    role: [7],
+    sort: 'lastVisit',
+    order: 'desc',
+    size: 20
   })
+  console.log(`${items.length} of ${totalItems} moderators`)
+  items.forEach((u) => console.log(u.username, u.lastVisit))
 }
 ```
 
@@ -11046,20 +11045,19 @@ export async function init(sdk) {
 
 ```javascript
 export async function init(sdk) {
+  await sdk.whenReady()
   if (!sdk.web) return
 
-  sdk.web.onReady(async () => {
-    const size = 100
-    let page = 1
-    let total = Infinity
+  const size = 100
+  let page = 1
+  let total = Infinity
 
-    while ((page - 1) * size < total) {
-      const result = await sdk.web.User.list({ page, size })
-      total = result.totalItems
-      result.items.forEach((u) => console.log(u.userId, u.username))
-      page++
-    }
-  })
+  while ((page - 1) * size < total) {
+    const result = await sdk.web.User.list({ page, size })
+    total = result.totalItems
+    result.items.forEach((u) => console.log(u.userId, u.username))
+    page++
+  }
 }
 ```
 
@@ -11313,20 +11311,19 @@ All methods throw on failure. Wrap calls in `try/catch`:
 
 ```javascript
 export async function init(sdk) {
+  await sdk.whenReady()
   if (!sdk.web) return
 
-  sdk.web.onReady(async () => {
-    try {
-      const me = await sdk.web.Context.User()
-      if (me.userId === null) {
-        // Guest — handle gracefully
-        return
-      }
-      // Use me.username, me.rank, etc.
-    } catch (err) {
-      console.error('Failed to fetch user context:', err.message)
+  try {
+    const me = await sdk.web.Context.User()
+    if (me.userId === null) {
+      // Guest — handle gracefully
+      return
     }
-  })
+    // Use me.username, me.rank, etc.
+  } catch (err) {
+    console.error('Failed to fetch user context:', err.message)
+  }
 }
 ```
 
@@ -11388,12 +11385,11 @@ Widget examples run inside your widget's `init(sdk)` function on a community pag
 
 ```javascript
 export async function init(sdk) {
+  await sdk.whenReady()
   if (!sdk.web) return // no Web SDK on this host page (e.g. embedded widgets, Skilljar)
-  sdk.web.onReady(async () => {
-    const ideaInstance = sdk.web.Content.Idea()
-    const results = await ideaInstance.search('dashboard', { limit: 5 })
-    results.forEach((r) => console.log(r.title, r.url))
-  })
+  const ideaInstance = sdk.web.Content.Idea()
+  const results = await ideaInstance.search('dashboard', { limit: 5 })
+  results.forEach((r) => console.log(r.title, r.url))
 }
 ```
 
@@ -11401,17 +11397,16 @@ export async function init(sdk) {
 
 ```javascript
 export async function init(sdk) {
+  await sdk.whenReady()
   if (!sdk.web) return // no Web SDK on this host page (e.g. embedded widgets, Skilljar)
-  sdk.web.onReady(async () => {
-    const results = await sdk.web.Content.search('bug', {
-      contentType: ['idea', 'question'],
-      categoryName: 'Ideas',
-      limit: 20,
-      page: 1,
-      fetchMetadata: true
-    })
-    console.log(results)
+  const results = await sdk.web.Content.search('bug', {
+    contentType: ['idea', 'question'],
+    categoryName: 'Ideas',
+    limit: 20,
+    page: 1,
+    fetchMetadata: true
   })
+  console.log(results)
 }
 ```
 
@@ -11419,11 +11414,10 @@ export async function init(sdk) {
 
 ```javascript
 export async function init(sdk) {
+  await sdk.whenReady()
   if (!sdk.web) return // no Web SDK on this host page (e.g. embedded widgets, Skilljar)
-  sdk.web.onReady(async () => {
-    const idea = sdk.web.Content.Idea(98765)
-    await idea.like()
-  })
+  const idea = sdk.web.Content.Idea(98765)
+  await idea.like()
 }
 ```
 
@@ -11431,12 +11425,11 @@ export async function init(sdk) {
 
 ```javascript
 export async function init(sdk) {
+  await sdk.whenReady()
   if (!sdk.web) return // no Web SDK on this host page (e.g. embedded widgets, Skilljar)
-  sdk.web.onReady(async () => {
-    await sdk.web.Subscription.subscribeToTopic('topic-abc')
-    const isSubscribed = await sdk.web.Subscription.getTopicSubscriptionStatus('topic-abc')
-    console.log(isSubscribed) // true
-  })
+  await sdk.web.Subscription.subscribeToTopic('topic-abc')
+  const isSubscribed = await sdk.web.Subscription.getTopicSubscriptionStatus('topic-abc')
+  console.log(isSubscribed) // true
 }
 ```
 
@@ -11444,22 +11437,21 @@ export async function init(sdk) {
 
 ```javascript
 export async function init(sdk) {
+  await sdk.whenReady()
   if (!sdk.web) return // no Web SDK on this host page (e.g. embedded widgets, Skilljar)
-  sdk.web.onReady(async () => {
-    const me = await sdk.web.Context.User()
+  const me = await sdk.web.Context.User()
 
-    if (me.userId === null) {
-      // Guest (guest projection) — show login prompt or public-only content
-      console.log('Not logged in')
-      return
-    }
+  if (me.userId === null) {
+    // Guest (guest projection) — show login prompt or public-only content
+    console.log('Not logged in')
+    return
+  }
 
-    // Authenticated viewer
-    console.log(me.username)     // 'janedoe'
-    console.log(me.userId)       // 101
-    console.log(me.rank?.name)   // 'Regular'
-    console.log(me.badges)       // [{ id: 100, title: 'First post', url: 'https://assets.example.com/…_thumb.png' }]
-  })
+  // Authenticated viewer
+  console.log(me.username)     // 'janedoe'
+  console.log(me.userId)       // 101
+  console.log(me.rank?.name)   // 'Regular'
+  console.log(me.badges)       // [{ id: 100, title: 'First post', url: 'https://assets.example.com/…_thumb.png' }]
 }
 ```
 
@@ -11467,20 +11459,18 @@ export async function init(sdk) {
 
 ```javascript
 export async function init(sdk) {
-  if (!sdk.web) return // no Web SDK on this host page (e.g. embedded widgets, Skilljar)
   await sdk.whenReady()
-  sdk.web.onReady(async () => {
-    const me = await sdk.web.Context.User()
-    if (me.userId === null || me.badges.length === 0) return
+  if (!sdk.web) return // no Web SDK on this host page (e.g. embedded widgets, Skilljar)
+  const me = await sdk.web.Context.User()
+  if (me.userId === null || me.badges.length === 0) return
 
-    const list = document.createElement('ul')
-    me.badges.forEach((badge) => {
-      const li = document.createElement('li')
-      li.textContent = badge.title
-      list.appendChild(li)
-    })
-    sdk.$('#badges')?.appendChild(list)
+  const list = document.createElement('ul')
+  me.badges.forEach((badge) => {
+    const li = document.createElement('li')
+    li.textContent = badge.title
+    list.appendChild(li)
   })
+  sdk.$('#badges')?.appendChild(list)
 }
 ```
 
@@ -11488,18 +11478,16 @@ export async function init(sdk) {
 
 ```javascript
 export async function init(sdk) {
-  if (!sdk.web) return // no Web SDK on this host page (e.g. embedded widgets, Skilljar)
   await sdk.whenReady()
-  sdk.web.onReady(async () => {
-    const me = await sdk.web.Context.User()
-    if (me.userId === null) return
+  if (!sdk.web) return // no Web SDK on this host page (e.g. embedded widgets, Skilljar)
+  const me = await sdk.web.Context.User()
+  if (me.userId === null) return
 
-    // Find a profile field by ID (field IDs are specific to your community)
-    const seniority = me.profileFields.find((f) => f.id === 3)
-    if (seniority?.value === 'senior') {
-      sdk.$('#advanced-content')?.removeAttribute('hidden')
-    }
-  })
+  // Find a profile field by ID (field IDs are specific to your community)
+  const seniority = me.profileFields.find((f) => f.id === 3)
+  if (seniority?.value === 'senior') {
+    sdk.$('#advanced-content')?.removeAttribute('hidden')
+  }
 }
 ```
 
@@ -11507,11 +11495,10 @@ export async function init(sdk) {
 
 ```javascript
 export async function init(sdk) {
+  await sdk.whenReady()
   if (!sdk.web) return // no Web SDK on this host page (e.g. embedded widgets, Skilljar)
-  sdk.web.onReady(async () => {
-    const users = await sdk.web.User.getUsersById([1, 2, 3])
-    users.forEach((u) => console.log(u.userId, u.username, u.avatar))
-  })
+  const users = await sdk.web.User.getUsersById([1, 2, 3])
+  users.forEach((u) => console.log(u.userId, u.username, u.avatar))
 }
 ```
 
@@ -11519,17 +11506,16 @@ export async function init(sdk) {
 
 ```javascript
 export async function init(sdk) {
+  await sdk.whenReady()
   if (!sdk.web) return // no Web SDK on this host page (e.g. embedded widgets, Skilljar)
-  sdk.web.onReady(async () => {
-    const { totalItems, items } = await sdk.web.User.list({
-      role: [7], // role IDs are specific to your community
-      sort: 'lastVisit',
-      order: 'desc',
-      size: 10
-    })
-    console.log(`${items.length} of ${totalItems} moderators`)
-    items.forEach((u) => console.log(u.username, u.rank?.name))
+  const { totalItems, items } = await sdk.web.User.list({
+    role: [7], // role IDs are specific to your community
+    sort: 'lastVisit',
+    order: 'desc',
+    size: 10
   })
+  console.log(`${items.length} of ${totalItems} moderators`)
+  items.forEach((u) => console.log(u.username, u.rank?.name))
 }
 ```
 
