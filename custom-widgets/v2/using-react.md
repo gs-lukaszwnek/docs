@@ -35,7 +35,7 @@ function MyWidget({ sdk }) {
 export async function init(sdk) {
   await sdk.whenReady()
 
-  const root = createRoot(sdk.$('#root'))
+  const root = createRoot(sdk.getContainer())
   root.render(<MyWidget sdk={sdk} />)
   sdk.on('destroy', () => root.unmount())
 }
@@ -44,7 +44,6 @@ export async function init(sdk) {
 **Widget HTML template** (e.g. `widgets/my-widget/index.html`):
 
 ```html
-<div id="root"></div>
 <script type="module" src="my-widget.js"></script>
 ```
 
@@ -52,23 +51,18 @@ JSX must be bundled before the browser can load it. To build and run a React wid
 
 Paths in widget HTML are relative to the widget's directory (the `source.path` in your registry). The platform wraps your template in a Shadow DOM automatically — you only provide the inner HTML above. See [Repository Layout — Asset Paths](project-setup#asset-paths-in-widget-html) for details.
 
-::: tip Use a dedicated mount container
-The platform injects design tokens and CSS variables into the shadow root. Mount React into a **dedicated element** rather than the shadow root itself — otherwise React's reconciliation may remove platform-managed nodes.
+::: tip React owns the whole container
+`sdk.getContainer()` returns the widget's shadow root, and `createRoot(sdk.getContainer())` — what `gsds create --framework react` generates — lets React manage everything inside it. If your widget HTML has other markup you want to keep, such as a loading placeholder, give React a dedicated element instead:
 
 ```javascript
-// Recommended — React owns only its container
-createRoot(sdk.$('#root'))
-
-// Avoid for React — the shadow root has platform-managed content
-createRoot(sdk.getContainer())
+createRoot(sdk.$('#root')) // with <div id="root"></div> in your widget HTML
 ```
 
-`sdk.getContainer()` returns the shadow root directly, which is fine for vanilla JS widgets that manage DOM manually.
 :::
 
 ## Step-by-Step: Build a React Widget
 
-The `sdk` object does **not** need to be bundled into your widget — your widget receives it through the `init(sdk)` function call at runtime, loaded via the platform's import map. You **must** bundle React and any other framework dependencies into your widget, but the `sdk` object itself is provided by the platform.
+The `sdk` object does **not** need to be bundled into your widget — your widget receives it as the argument to its `init(sdk)` function at runtime. You **must** bundle React and any other framework dependencies into your widget, but the `sdk` object itself is provided by the platform.
 
 ### 1. Scaffold the Widget
 
