@@ -1,17 +1,21 @@
 ---
 url: https://developer-portal.gainsight.com/docs/sdk/web-sdk/user-context.md
 description: >-
-  Complete reference for user context in the ChWebSdk — fetching the current
+  Complete reference for user context in the Web SDK — fetching the current
   viewer, looking up community members, the full User object schema, guest
   handling, and field availability by method.
 ---
 
 # User Context
 
-This page documents the `ChWebSdk` user-context API: fetching the current viewer with `ChWebSdk.Context.User()` and looking up community members with the `ChWebSdk.User.*` methods. All run as the visiting user, authorized by the community session cookie.
+This page documents the Web SDK user-context API: fetching the current viewer with `sdk.web.Context.User()` and looking up community members with the `sdk.web.User.*` methods. All run as the visiting user, authorized by the community session cookie.
+
+::: info Where the examples run
+Examples run inside a widget's `init(sdk)` function, after checking that `sdk.web` is defined. It is `undefined` on embedded widgets and Skilljar host pages. Scripts have no `init(sdk)`; they use `window.ChWebSdk` instead. `window.ChWebSdk` in widget code still works but is deprecated — use `sdk.web`. Scripts keep using `window.ChWebSdk`. See [Web SDK](overview).
+:::
 
 ::: tip
-Prefer these SDK methods over a Connector for user data — they use the browser session and need no server-side secrets.
+Prefer these SDK methods over a Connector for public member data — they use the browser session and need no server-side secrets. Private account data, such as email addresses, is not available through the SDK.
 :::
 
 ## Context: Current Viewer
@@ -26,37 +30,43 @@ Fetches the current user for the active session. This is the direct replacement 
 * For an unauthenticated (guest) visitor, resolves to the **guest projection** — a `User` object with `userId: null` and `username: "guest"`. It is **never `null`**; branch on `userId` to tell guest from member.
 * Throws if called outside a browser environment or if the network request fails.
 
-Takes no parameters. `rank`, `badges`, and `profileFields` are always hydrated on every response.
+Takes no parameters. For a signed-in visitor, `badges` and `profileFields` are always present (an empty array when there is nothing to show) and `rank` is present when the user has one. The guest result has `badges: []` and no `profileFields` or `rank`; see [Guest Handling](#guest-handling).
 
-::: warning No private data on the current viewer
-`Context.User()` is readable by any script on the community page, so it never exposes private data — **even for the authenticated viewer**. Email address, private-message counts, subscription count, and login/registration source are not included in the response.
+::: warning Private profile fields are included
+`Context.User()` returns the signed-in member's own profile fields, including the ones set to **Private** (`visibility: 2`). Private keeps a field from other members. It does not keep it from scripts running on the community page (analytics, tag managers, chat tools, other widgets), which can read it through the SDK. Do not send `profileFields` to external services or logs, and filter on `visibility === 1` when you need only public values. `User.getById()` called with the viewer's own ID returns public fields only.
+
+Private account data is never included, even for the signed-in viewer: email address, private-message counts, subscription count, login/registration source, email-campaign opt-in, and custom role IDs.
 :::
 
 **Checking authenticated vs. guest:** branch on `userId`, not on `null`.
 
 ```javascript
-ChWebSdk.onReady(async () => {
-  const me = await ChWebSdk.Context.User()
+export async function init(sdk) {
+  if (!sdk.web) return
 
-  if (me.userId === null) {
-    // Guest — show a login prompt or public-only content
-    return
-  }
+  sdk.web.onReady(async () => {
+    const me = await sdk.web.Context.User()
 
-  // Authenticated — personalize the UI
-  console.log(me.username)        // 'janedoe'
-  console.log(me.userId)          // 101
-  console.log(me.rank?.name)      // 'Regular'
-  console.log(me.badges)          // [{ id: 100, title: 'First post', url: '/badge/first-post' }]
-  console.log(me.profileFields)   // [{ id: 3, title: 'Seniority', value: 'senior', ... }]
-})
+    if (me.userId === null) {
+      // Guest — show a login prompt or public-only content
+      return
+    }
+
+    // Authenticated — personalize the UI
+    console.log(me.username)        // 'janedoe'
+    console.log(me.userId)          // 101
+    console.log(me.rank?.name)      // 'Regular'
+    console.log(me.badges)          // [{ id: 100, title: 'First post', url: 'https://assets.example.com/…_thumb.png' }]
+    console.log(me.profileFields)   // [{ id: 3, title: 'Seniority', value: 'senior', ... }]
+  })
+}
 ```
 
 ***
 
 ## User: Lookup and Listing Methods
 
-All methods below are **browser-only** and operate on the community user directory. They return the public `User` shape — no private data (email, private-message counts, login source) is exposed by any of them.
+All methods below are **browser-only** and operate on the community user directory. They return the public `User` shape — no private account data (email, private-message counts, login source) and no private-visibility profile fields are exposed by any of them.
 
 ### `User.getById(id)`
 
@@ -69,7 +79,7 @@ Fetch a single user by numeric ID.
 | `id` | `number \| string` | User ID. Numeric strings are accepted and coerced. |
 
 ```javascript
-const user = await ChWebSdk.User.getById(101)
+const user = await sdk.web.User.getById(101)
 if (user) {
   console.log(user.username, user.rank?.name)
 }
@@ -88,7 +98,7 @@ Up to 100 IDs per request. IDs beyond the hundredth are dropped, not refused.
 | `ids` | `Array<number \| string>` | User IDs to fetch. Numeric strings are accepted. |
 
 ```javascript
-const users = await ChWebSdk.User.getUsersById([101, 202, 303])
+const users = await sdk.web.User.getUsersById([101, 202, 303])
 // users.length may be less than 3 if any ID did not resolve
 users.forEach((u) => console.log(u.userId, u.username))
 ```
@@ -124,10 +134,10 @@ Role, badge, and profile-field IDs used in the filters and examples below are **
 
 ```javascript
 // Users who joined in the last 7 days
-const { items } = await ChWebSdk.User.list({ joinDate: 'P7D' })
+const { items } = await sdk.web.User.list({ joinDate: 'P7D' })
 
 // Users who joined in a specific range
-const { items } = await ChWebSdk.User.list({
+const { items } = await sdk.web.User.list({
   joinDate: { from: '2024-01-01T00:00:00Z', to: '2024-12-31T23:59:59Z' }
 })
 ```
@@ -136,41 +146,51 @@ const { items } = await ChWebSdk.User.list({
 
 ```javascript
 // Users with 10 or more topics
-const { items } = await ChWebSdk.User.list({ topics: { gte: 10 } })
+const { items } = await sdk.web.User.list({ topics: { gte: 10 } })
 ```
 
 **`UserSortField`** values: `'userId'` | `'username'` | `'replies'` | `'topics'` | `'points'` | `'lastVisit'` | `'joinDate'` | `'lastActivity'`
 
+There is no sort by total post count. `topics` and `replies` sort separately, and any other `sort` value returns HTTP 400.
+
 **Example — list moderators sorted by last visit:**
 
 ```javascript
-ChWebSdk.onReady(async () => {
-  const { totalItems, items } = await ChWebSdk.User.list({
-    role: [7],
-    sort: 'lastVisit',
-    order: 'desc',
-    size: 20
+export async function init(sdk) {
+  if (!sdk.web) return
+
+  sdk.web.onReady(async () => {
+    const { totalItems, items } = await sdk.web.User.list({
+      role: [7],
+      sort: 'lastVisit',
+      order: 'desc',
+      size: 20
+    })
+    console.log(`${items.length} of ${totalItems} moderators`)
+    items.forEach((u) => console.log(u.username, u.lastVisit))
   })
-  console.log(`${items.length} of ${totalItems} moderators`)
-  items.forEach((u) => console.log(u.username, u.lastVisit))
-})
+}
 ```
 
 **Example — paginate through all users:**
 
 ```javascript
-ChWebSdk.onReady(async () => {
-  const size = 100
-  let page = 1
-  let total = Infinity
+export async function init(sdk) {
+  if (!sdk.web) return
 
-  while ((page - 1) * size < total) {
-    const result = await ChWebSdk.User.list({ page, size })
-    total = result.totalItems
-    result.items.forEach((u) => console.log(u.userId, u.username))
-    page++
-  }
-})
+  sdk.web.onReady(async () => {
+    const size = 100
+    let page = 1
+    let total = Infinity
+
+    while ((page - 1) * size < total) {
+      const result = await sdk.web.User.list({ page, size })
+      total = result.totalItems
+      result.items.forEach((u) => console.log(u.userId, u.username))
+      page++
+    }
+  })
+}
 ```
 
 ### `User.getRecentlyActive(limit?)`
@@ -184,13 +204,13 @@ Convenience wrapper around `list()`. Returns users sorted by `lastVisit` descend
 | `limit` | `number` | `10` | Maximum users to return. |
 
 ```javascript
-const recentUsers = await ChWebSdk.User.getRecentlyActive(5)
+const recentUsers = await sdk.web.User.getRecentlyActive(5)
 recentUsers.forEach((u) => console.log(u.username, u.lastVisit))
 ```
 
 ### `User.getByRole(role, options?)`
 
-List users that hold one or more specified roles.
+List users whose main role is one of the specified roles. Custom roles are not matched.
 
 **Returns:** `Promise<{ totalItems: number, items: User[] }>` — **defaults to 25 per page (max 100)**, same as `list()`.
 
@@ -201,10 +221,10 @@ List users that hold one or more specified roles.
 
 ```javascript
 // Users with role id 7, first page
-const { totalItems, items } = await ChWebSdk.User.getByRole(7, { size: 50 })
+const { totalItems, items } = await sdk.web.User.getByRole(7, { size: 50 })
 
 // Users with any of these roles
-const { items } = await ChWebSdk.User.getByRole([7, 9])
+const { items } = await sdk.web.User.getByRole([7, 9])
 ```
 
 ### `User.search(query)`
@@ -225,16 +245,16 @@ Search users by a query string. Returns a reduced field set optimized for mentio
 |---|---|---|
 | `userId` | `number` | Canonical user ID. |
 | `username` | `string` | Display username. |
-| `profileUrl` | `string \| null` | Relative URL to the profile page. |
+| `profileUrl` | `string \| null` | Absolute URL to the profile page. |
 | `avatar` | `string` | Avatar URL, or `""` when none. |
 | `userTitle` | `string` | Display title. |
-| `reputation` | `number \| null` | Reputation score. |
+| `reputation` | `number \| null` | Reputation level, not the raw points. Omitted when no level is available for the user. |
 | `isBanned` | `boolean` | `true` if the user holds the banned role. |
 | `badges` | `Badge[]` | Hydrated badges, **without `id`**. |
 | `rank` | `Rank \| null` | Hydrated rank, **without `id`**. |
 
 ```javascript
-const results = await ChWebSdk.User.search('jane')
+const results = await sdk.web.User.search('jane')
 results.forEach((u) => console.log(u.userId, u.username, u.avatar))
 ```
 
@@ -242,7 +262,11 @@ results.forEach((u) => console.log(u.userId, u.username, u.avatar))
 
 ## User Object Shape
 
-All methods above return objects conforming to the unified `User` model.
+Every method above except `search()` returns the unified `User` model. `search()` returns the reduced `UserSearchResult` shape described under `User.search(query)`.
+
+A field with no value is **omitted** from the `User` object rather than returned as `null`. Fields marked *(optional)* in the tables below can be absent: read them with optional chaining (`user.rank?.name`) or a presence check, not `=== null`. `userId` and its mirror `id` are the exception: they are always present, and `null` on the guest result. Inside nested objects the rule differs: the `Rank` object returns its empty fields (such as `color` or `iconUrl`) as `null`, and a `ProfileField` `value` can be `null`.
+
+**Not returned today:** `firstName`, `lastName`, `signature`, `customRoles`, `solved`, `likesReceived`, `likesGiven`, `followers` and `following`. The generated TypeScript `User` type still declares some of these as optional, but the backend does not populate them, so reading them always gives `undefined`.
 
 ### Core identity fields
 
@@ -252,30 +276,31 @@ All methods above return objects conforming to the unified `User` model.
 | `id` | `number \| null` | **Deprecated** mirror of `userId`. Kept for backward compatibility; migrate to `userId`. |
 | `username` | `string` | Display username. `"guest"` on the guest projection. |
 | `name` | `string` | **Deprecated** alias of `username`. |
-| `firstName` | `string \| null` | Often `null` due to visibility settings. |
-| `lastName` | `string \| null` | |
 | `avatar` | `string` | Avatar URL, or empty string `""` when none. |
-| `profileUrl` | `string \| null` | Relative URL to the user's profile page (e.g. `"/user/janedoe"`). |
-| `signature` | `string \| null` | User signature. |
-| `userTitle` | `string` | Display title (custom title or rank name; empty string if hidden). |
-| `companyId` | `string \| null` | Company identifier. |
+| `profileUrl` | `string` (optional) | Absolute URL to the user's profile page (e.g. `"https://community.example.com/members/janedoe-101"`, where `101` is the user ID). The path holds the username in a URL-safe form (lowercase, symbols become hyphens: `mod_99` becomes `mod-99`), so use this value and do not build the link from `username`. Omitted on the guest result. |
+| `url` | `string` (optional) | **Deprecated** mirror of `profileUrl`. Kept for backward compatibility; migrate to `profileUrl`. |
+| `userTitle` | `string` (optional) | Display title (custom title or rank name; empty string if hidden). Omitted on the guest result. |
+| `companyId` | `string` (optional) | The external ID of the company the user is linked to. Omitted when the user is not linked to a company. It is not the community's "Company" profile field, which is an ordinary text field in `profileFields`. |
 
 ### Role and moderation fields
 
 | Field | Type | Notes |
 |---|---|---|
 | `isBanned` | `boolean` | `true` if the user holds the banned role. |
-| `isModerator` | `boolean` | `true` if the user holds any moderator role. |
-| `role` | `number \| null` | Main role ID as an integer. |
-| `mainRole` | `string \| null` | Main role slug (e.g. `"moderator"`, `"roles.guest"`). |
-| `customRoles` | `number[]` | Custom role IDs. |
+| `role` | `number` (optional) | Main role ID as an integer. Community-specific. Omitted on the guest result. |
+| `isModerator` | `boolean` | Guest result only (`false`). A signed-in user's object never has it. |
+| `mainRole` | `string` | Guest result only (`"roles.guest"`). A signed-in user's object never has it. |
+
+A signed-in user's object has no moderator flag. `role` is the **main role** only: custom roles are not returned, and `getByRole()` and `list({ role })` match the main role only. To show something to moderators, compare `role` with your community's moderator, community manager and administrator role IDs (they are specific to each community, so look them up in the admin Roles settings and never assume the sample ID `7`). A role granted only as a custom role is not visible to the SDK.
 
 ### Rank fields
 
 | Field | Type | Notes |
 |---|---|---|
-| `rankId` | `number \| null` | Rank ID. `null` when the user has no rank. |
-| `rank` | `Rank \| null` | Hydrated rank with display styling. The property is always present; the value is `null` when the user has no rank. |
+| `rankId` | `number` (optional) | Rank ID. Omitted when the user has no rank. |
+| `rank` | `Rank` (optional) | Hydrated rank with display styling. Omitted when the user has no rank; see below. |
+
+A user has no rank until the community's rank conditions assign one (a new member starts without one), and loses it when no rank condition matches. `rank` is also omitted when the community has turned the rank feature off or the rank no longer exists; in those two cases `rankId` can still be present, so test `rank`, not `rankId`, before rendering a rank.
 
 **`Rank` object shape:**
 
@@ -304,14 +329,16 @@ All methods above return objects conforming to the unified `User` model.
 |---|---|---|
 | `id` | `number` | Badge ID |
 | `title` | `string` | Badge display name (e.g. `"First post"`) |
-| `url` | `string \| null` | Relative URL to the badge page (e.g. `"/badge/first-post"`) |
+| `url` | `string` | Absolute URL of the badge's thumbnail image (e.g. `"https://assets.example.com/attachment/3f2a_thumb.png"`). Empty string `""` when the badge has no image. |
 
 ### Group and profile fields
 
 | Field | Type | Notes |
 |---|---|---|
 | `groups` | `number[]` | Group IDs the user belongs to. |
-| `profileFields` | `ProfileField[]` | Structured custom profile fields. Always hydrated. |
+| `profileFields` | `ProfileField[]` | Custom profile fields stored for this user that the viewer is allowed to see, in the community's display order; see below. |
+
+`profileFields` is not the community's full field list: one user can have 1 entry and another 17, so look a field up by `id`, never by position. To find a field's `id`, log your own `sdk.web.Context.User()` and read `profileFields`. A field titled "Email" is an ordinary profile field, not the account email address, which is never returned.
 
 **`ProfileField` object shape:**
 
@@ -319,9 +346,9 @@ All methods above return objects conforming to the unified `User` model.
 |---|---|---|
 | `id` | `number` | Profile field ID |
 | `title` | `string` | Profile field label (e.g. `"Seniority"`) |
-| `type` | `string` | Field type: `'text'`, `'textarea'`, `'select'`, `'radio'`, `'check'`, `'multiselect'`, `'date'`, etc. |
-| `value` | `string \| number \| boolean \| string[] \| object \| null` | The user's value for this field. `null` when unset. |
-| `visibility` | `number` | Visibility level of the field, as an integer. |
+| `type` | `string` | Field type: `'text'`, `'check'`, `'select'`, `'radio'`, `'birthday'` or `'date'`. |
+| `value` | `string \| null` | The value as stored. An empty `text` field is `""`; an unset `select`, `check` or `date` field is `null`. Treat both as "no value". For `select` and `radio` fields it is the stored option value (for example `"india"`), not necessarily the label members see. |
+| `visibility` | `number` | Visibility level of the field: `1` public, `2` private. Only `Context.User()` returns private fields (the viewer's own); every other method returns public ones. Hidden fields are never returned. |
 
 ### Activity and engagement fields
 
@@ -330,32 +357,32 @@ All methods above return objects conforming to the unified `User` model.
 | `topics` | `number` | Topics created. |
 | `replies` | `number` | Replies created. |
 | `points` | `number` | Points. |
-| `solved` | `number` | Best-answer / solved count. |
-| `reputation` | `number \| null` | Reputation score. `null` if the reputation feature is disabled. |
-| `likesReceived` | `number` | Likes received. |
-| `likesGiven` | `number` | Likes given. |
-| `followers` | `number` | Follower count. |
-| `following` | `number` | Following count. |
+| `reputation` | `number` (optional) | Reputation level, not the raw points (`points` is a separate field). Omitted when no level is available for the user. |
+| `userLevel` | `number` (optional) | **Deprecated** alias of `reputation`, returned by `getUsersById()` only. |
 
 ### Date fields
 
+All three are UTC timestamps as ISO-8601 strings, written with a `+00:00` offset (for example `"2024-03-18T09:30:00+00:00"`). `new Date(value)` parses them.
+
 | Field | Type | Notes |
 |---|---|---|
-| `joinDate` | `string` | Registration timestamp as ISO-8601 datetime (e.g. `"2022-04-12T09:23:18Z"`). **Not** a Unix timestamp — the legacy `inSidedData.user.joindate` was a Unix int; this is a string. |
-| `lastActivity` | `string \| null` | Last activity timestamp (ISO-8601). May be `null` when no activity has been recorded. |
-| `lastVisit` | `string \| null` | Last visit/login timestamp (ISO-8601). |
+| `joinDate` | `string` (optional) | Registration timestamp as ISO-8601 datetime (e.g. `"2024-03-18T09:30:00+00:00"`). Omitted on the guest result. **Not** a Unix timestamp — the legacy `inSidedData.user.joindate` was a Unix int; this is a string. |
+| `lastActivity` | `string` (optional) | Last activity timestamp (ISO-8601). Equals `joinDate` until the user has activity. Omitted on the guest result. |
+| `lastVisit` | `string` (optional) | Last visit/login timestamp (ISO-8601). Omitted when the user has never visited, and on the guest result. |
 
-::: info No private fields
-The `User` object never carries private data — no email address, private-message counts, subscription count, login/registration source, or email-campaign opt-in. These are stripped on the server for every method, including `Context.User()` for the authenticated viewer. Obtain private data server-side through a Connector if a widget genuinely needs it.
+::: info No private account data
+The `User` object never carries private account data — no email address, private-message counts, subscription count, login/registration source, email-campaign opt-in, or custom role IDs. These are stripped on the server for every method, including `Context.User()` for the authenticated viewer. Private profile fields are the one exception: only `Context.User()` returns them, and only the viewer's own. Obtain private account data server-side through a Connector if a widget genuinely needs it.
 :::
 
 ***
 
 ## Guest Handling
 
-When an unauthenticated visitor calls `ChWebSdk.Context.User()`, it resolves to the **guest projection** — a `User` object with `userId: null`, `username: "guest"`, and zeroed counts. It is never `null`, so always branch on `me.userId === null` before treating the viewer as a member.
+When an unauthenticated visitor calls `sdk.web.Context.User()`, it resolves to the **guest projection** — a `User` object with `userId: null`, `username: "guest"`, and zeroed counts. It is never `null`, so always branch on `me.userId === null` before treating the viewer as a member.
 
-For `ChWebSdk.User.list()` and related methods, guests get the public field set. Email-based `search` requires an authenticated session (guests receive a 403).
+The guest result contains only these keys: `userId` and `id` (both `null`), `username` and `name` (`"guest"`), `avatar` (`""`), `badges` and `groups` (both `[]`), `isBanned` (`false`), `isModerator` (`false`), `mainRole` (`"roles.guest"`), and `topics`, `replies` and `points` (all `0`). It has no `profileFields`, `rank`, `role`, `profileUrl` or date fields, so guard reads such as `me.profileFields` and `me.joinDate` behind the `userId === null` check.
+
+For `sdk.web.User.list()` and related methods, guests get the public field set. Email-based `search` requires an authenticated session (guests receive a 403).
 
 ::: warning Private communities
 On a **private community**, unauthenticated requests are redirected to the login page instead of returning data, so the SDK call rejects rather than resolving. Wrap calls in `try/catch` and treat a rejection as "not signed in."
@@ -365,21 +392,22 @@ On a **private community**, unauthenticated requests are redirected to the login
 
 ## Field Availability by Method
 
-`User.search()` returns a reduced set optimized for autocomplete. Every other method — `Context.User()`, `getById()`, `getUsersById()`, `list()`, `getByRole()`, `getRecentlyActive()` — returns the full public `User` shape. No method exposes private data.
+`User.search()` returns a reduced set optimized for autocomplete. Every other method — `Context.User()`, `getById()`, `getUsersById()`, `list()`, `getByRole()`, `getRecentlyActive()` — returns the full public `User` shape. No method exposes private account data, and only `Context.User()` returns private-visibility profile fields (the viewer's own).
 
 | Field group | `Context.User()` | Other `User.*` lookups | `search()` |
 |---|---|---|---|
 | Base scalars (`userId`, `username`, `avatar`, …) | ✅ | ✅ | Partial |
 | `rank` | ✅ | ✅ | ✅ (without `id`) |
 | `badges` | ✅ | ✅ | ✅ (without `id`) |
-| `profileFields` | ✅ | ✅ | ❌ |
-| Private data (email, PM counts, subscriptions, login/register source, email-campaign opt-in) | ❌ | ❌ | ❌ |
+| `profileFields` (public visibility) | ✅ | ✅ | ❌ |
+| `profileFields` (private visibility, the viewer's own) | ✅ | ❌ | ❌ |
+| Private account data (email, PM counts, subscriptions, login/register source, email-campaign opt-in, custom role IDs) | ❌ | ❌ | ❌ |
 
 ***
 
 ## Legacy Field Migration
 
-If you are migrating code that reads `inSidedData.user`, use this table to find the canonical field name:
+If you are migrating code that reads `inSidedData.user` (or the `getUsersById` response, which carried `url` and `userLevel`), use this table to find the canonical field name:
 
 | Legacy field | Canonical field |
 |---|---|
@@ -387,15 +415,21 @@ If you are migrating code that reads `inSidedData.user`, use this table to find 
 | `name` | `username` |
 | `url` | `profileUrl` |
 | `userLevel` | `reputation` |
-| `rankName`, `rankIcon` | `rank.name`, `rank.iconUrl` |
+| `rankName` | `rank.name` |
+| `rankIcon` | `rank.avatarIconUrl` (`rank.iconUrl` is the separate username icon) |
 | `topicsCount` | `topics` |
 | `repliesCount` | `replies` |
-| `solvedCount` | `solved` |
-| `likes` | `likesReceived` |
-| `likes_given` | `likesGiven` |
 | `joindate` (Unix int) | `joinDate` (ISO-8601 string — **different type**) |
 
-Legacy `inSidedData.user` fields carrying private data — `email`, `pmUnreadCount`, `pmTotalCount`, `subscriptions`, `loginSource`, `registerSource` — have **no canonical equivalent**. They are not exposed by any SDK method; read them server-side through a Connector if required.
+Some legacy `inSidedData.user` fields have **no canonical equivalent**:
+
+* Private data — `email`, `pmUnreadCount`, `pmTotalCount`, `subscriptions`, `loginSource`, `registerSource`. No SDK method exposes them; read them server-side through a Connector if required.
+* Engagement counts — `solvedCount`, `likes`, `likes_given`. No SDK method returns them.
+* Moderation — `isModerator`, `mainRole` and the comma-separated `role`. The SDK returns `isModerator` and `mainRole` only for guests, and `role` is the main role ID alone, so a script that gated on `isModerator` must compare `role` with your moderator role IDs instead. Custom roles are not returned.
+
+::: warning Profile fields are broader than before
+`inSidedData.user.profileFields` held public fields only. `Context.User().profileFields` also holds the viewer's own private fields, so a script that was safe to log or forward with the legacy list is not safe to do so with this one.
+:::
 
 ::: warning joinDate type change
 `inSidedData.user.joindate` was a Unix timestamp (integer). The canonical `joinDate` is an ISO-8601 datetime **string**. If you compare or format dates, update your parsing logic.
@@ -408,18 +442,22 @@ Legacy `inSidedData.user` fields carrying private data — `email`, `pmUnreadCou
 All methods throw on failure. Wrap calls in `try/catch`:
 
 ```javascript
-ChWebSdk.onReady(async () => {
-  try {
-    const me = await ChWebSdk.Context.User()
-    if (me.userId === null) {
-      // Guest — handle gracefully
-      return
+export async function init(sdk) {
+  if (!sdk.web) return
+
+  sdk.web.onReady(async () => {
+    try {
+      const me = await sdk.web.Context.User()
+      if (me.userId === null) {
+        // Guest — handle gracefully
+        return
+      }
+      // Use me.username, me.rank, etc.
+    } catch (err) {
+      console.error('Failed to fetch user context:', err.message)
     }
-    // Use me.username, me.rank, etc.
-  } catch (err) {
-    console.error('Failed to fetch user context:', err.message)
-  }
-})
+  })
+}
 ```
 
 Common error conditions:
@@ -439,17 +477,22 @@ The SDK surfaces these as a rejected promise (a thrown `Error`), **not** as a st
 ## Next Steps
 
 * [Examples](examples) — runnable, copy-paste code for `Context.User()` and the `User.*` methods
-* [Methods and Constructors](methods-constructors) — full reference for all SDK namespaces
+* [Reference](methods-constructors) — full reference for all SDK namespaces
 * [Web SDK](overview) — availability and quick start
 * [Passing User Context](/connectors/passing-user-context) — use server-side template variables when building Connectors that need the viewer's identity
 
 QUICK REFERENCE — user context:
 
 * Context.User() takes no arguments and always returns a User object, never null. A guest resolves to the guest projection (userId: null, username: "guest"). Branch on me.userId === null, not on me === null.
-* No method exposes private data. email, pmUnread, pmTotal, subscriptions, loginSource, registerSource, and emailCampaignNotification are stripped server-side for every method, including Context.User() for the authenticated viewer. There is no getByEmail() method, no email filter parameter, and no email sort field. (A logged-in caller may still pass an email-shaped term to list({ search }); a guest doing so gets HTTP 403.)
-* rank, badges, and profileFields are always hydrated on Context.User() and on every User lookup except search().
+* No method exposes private account data, but Context.User() does include the viewer's own private profile fields (visibility 2); every other method returns only visibility 1. Never send profileFields to external URLs, analytics or logs, and filter on visibility === 1 when only public values are needed. email, pmUnread, pmTotal, subscriptions, loginSource, registerSource, emailCampaignNotification, and customRoles are stripped server-side for every method, including Context.User() for the authenticated viewer. There is no getByEmail() method, no email filter parameter, and no email sort field. (A logged-in caller may still pass an email-shaped term to list({ search }); a guest doing so gets HTTP 403.)
+* For signed-in users badges and profileFields are always present on Context.User() and on every User lookup except search(). The guest result has badges: \[] and no profileFields, rank, role, profileUrl or date fields, so check me.userId === null before reading them. rank is present only when the user has one; test rank, not rankId.
+* profileFields lists only the fields stored for that user and visible to the viewer, not every field the community defines, so look entries up by id. A value is exactly as stored: an empty text field is "", an unset select, check or date field is null.
+* Timestamps (joinDate, lastActivity, lastVisit) are UTC ISO-8601 strings with a +00:00 offset, for example 2024-03-18T09:30:00+00:00. lastActivity equals joinDate until the user has activity; lastVisit is omitted for users who never visited. profileUrl contains a URL-safe form of the username plus the user id (mod\_99 becomes mod-99); never build it from username.
 * User.getById(id) and User.getUsersById(ids) share one transport and return the identical full User shape. getById resolves null for a missing id; getUsersById silently omits unresolved ids and accepts up to 100 ids.
 * User.list(options) returns totalItems plus an items array; defaults are page 1 and size 25, with a max size of 100. getByRole() and getRecentlyActive() are thin wrappers over list(). A guest passing an email-address term to list({ search }) gets HTTP 403; username search works for guests.
 * User.search(query) returns up to 25 users (fixed, no size parameter) with a reduced field set for autocomplete UIs: no profileFields, and rank and badges carry no id. Use list() when you need the full object.
-* userId is canonical; id, name, and userLevel are deprecated aliases. joinDate is an ISO-8601 string, not a Unix timestamp.
+* userId is canonical; id, name, and url are deprecated aliases of userId, username, and profileUrl. getUsersById also returns a deprecated userLevel alias of reputation. joinDate is an ISO-8601 string, not a Unix timestamp. profileUrl is an absolute URL.
+* A field with no value is omitted from the User object, not returned as null (userId and id are always present, null on the guest result). Fields marked optional in the tables can be absent; use optional chaining. Inside a rank object, empty fields (color, icon, iconUrl, avatarIcon, avatarIconUrl) are null, not omitted.
+* The User object has no firstName, lastName, signature, customRoles, solved, likesReceived, likesGiven, followers, or following fields today. Do not read them; they are not returned. isModerator and mainRole exist only on the guest result (false and "roles.guest"); a signed-in user never has them, so they cannot detect moderators. role is the main role id only (custom roles are not returned); role, badge and profile-field ids are specific to each community, so ask for them and never assume a sample id such as 7.
+* list() cannot sort by total post count. The sort fields are userId, username, replies, topics, points, lastVisit, joinDate, and lastActivity. Total post counts are not available, so never label any of those values as a post count.
 * All methods are browser-only and throw when no browser window is present.

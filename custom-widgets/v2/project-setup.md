@@ -12,18 +12,33 @@ This guide explains how to structure your GitHub repository for publishing exten
 ## Prerequisites
 
 * A GitHub account
+* A connected GitHub organization — see [Connect Your GitHub Account](connect-github)
+* The Developer Studio CLI (`gsds`) installed — see [Get Started with the CLI](/cli/getting-started)
 * Basic understanding of JSON
 
-## Quick Start: Use the Template
+## Quick Start: Create a Project with the CLI
 
-The easiest way to get started is to fork the official template repository:
+The quickest way to get the right layout is to let the CLI create it:
 
-**<https://github.com/gainsight-hub/widgets-repository-template>**
+1. Create the project. `gsds init` writes the registries, `gsds.json`, and the `widgets/`, `scripts/`, and `stylesheets/` directories, and makes a first Git commit on `main`:
 
-1. Go to the template repository
-2. Click **Fork** (or use as template)
-3. Clone your forked repository
-4. Customize the extensions for your needs
+   ```sh
+   gsds init acme-widgets
+   cd acme-widgets
+   ```
+
+2. Create an empty repository on GitHub — without a README, license, or `.gitignore` — and push the project to it:
+
+   ```sh
+   git remote add origin git@github.com:your-org/acme-widgets.git
+   git push -u origin main
+   ```
+
+3. Enable the repository in **Integrations** → **Developer Studio** → **Sources**, with `main` as the watched branch — see [Repository & Branch Settings](repository-settings). If your GitHub App installation is limited to selected repositories, grant it access to the new repository first, from your GitHub organization's **Settings > GitHub Apps** page.
+
+Then add extensions with `gsds create` (widgets), `gsds script new` (scripts), and `gsds style new` (stylesheets). Each command creates the files and adds the entry to `extensions_registry.json` for you. Run `gsds create` with no flags and it prompts for the widget name, framework (React, Vue, Angular, vanilla JavaScript, or plain HTML), and category, so you pick the technology your widget needs. See the [Command Reference](/cli/reference/commands).
+
+If you already have a widget repository, run `gsds init .` from its root instead — it adds only the files that are missing and never overwrites existing ones.
 
 ## Repository Structure
 
@@ -33,11 +48,19 @@ Your repository should follow this structure:
 your-repo/
 ├── extensions_registry.json          # Required: Widget, script, and stylesheet definitions
 ├── connectors_registry.json      # Optional: Connector definitions
+├── gsds.json                     # Created by gsds init: marks the project root for the CLI
 ├── widgets/
-│   ├── my_widget/
-│   │   └── index.html            # Widget content file
-│   └── another_widget/
-│       └── index.html
+│   ├── my_widget/                # Widget with a build step (for example React or vanilla JavaScript)
+│   │   ├── package.json
+│   │   ├── src/                  # Widget source files
+│   │   ├── thumbnail.png
+│   │   └── dist/                 # Built by gsds build (source.path: widgets/my_widget/dist)
+│   │       ├── index.html        # Widget content file
+│   │       └── widget.js
+│   └── another_widget/           # Plain HTML widget: no build step
+│       ├── thumbnail.png
+│       └── dist/
+│           └── content.html
 ├── scripts/
 │   └── analytics/
 │       └── script.js             # Global script files
@@ -204,23 +227,13 @@ When you remove a definition from the registry and push to the watched branch, t
 Removing extensions is a destructive action. If a widget is already placed on pages in the No-Code Builder, those pages will show a missing widget. Make sure the extension is no longer in use before removing it.
 :::
 
-## Template Repository Features
-
-The [template repository](https://github.com/gainsight-hub/widgets-repository-template) includes:
-
-* **Example widgets**: Ready-to-use demo widgets
-* **Example scripts and stylesheets**: Sample global assets with default configurations
-* **Build script**: `bin/build-registry.sh` to generate registry from individual configs
-* **Documentation**: Detailed setup guide in `widgets/WIDGET_SETUP.md`
-* **Default config**: Global settings in `config/defaults.json`
-
 ## Best Practices
 
-1. **Use the template**: Start with the template repo to avoid common mistakes
-2. **Keep organized**: One folder per extension under `widgets/`, `scripts/`, or `stylesheets/`
-3. **Use relative paths**: For repository-hosted files, define paths relative to repo root
-4. **Version your widgets**: Update the `version` field when making changes
-5. **Validate JSON**: Ensure `extensions_registry.json` is valid JSON before pushing
+1. **Scaffold with the CLI**: Create the project with `gsds init` and each extension with `gsds create`, `gsds script new`, or `gsds style new` to avoid common mistakes
+2. **Build before you push**: Run `gsds build` before each commit. It rebuilds each widget's `dist/` directory — the files the platform publishes — and validates both registries
+3. **Keep organized**: One folder per extension under `widgets/`, `scripts/`, or `stylesheets/`
+4. **Use relative paths**: For repository-hosted files, define paths relative to repo root
+5. **Version your widgets**: Update the `version` field when making changes
 6. **Test with empty registry first**: Verify your connection works before adding extensions
 7. **Name extensions uniquely**: Across all connected repositories, extension names must be unique
 

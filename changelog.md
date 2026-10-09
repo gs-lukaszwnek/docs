@@ -7,6 +7,10 @@ description: Release history of Developer Studio — new features, changes, and 
 
 Changes and additions to Developer Studio, ordered by date (newest first).
 
+## 2026-09-24 - Developer Studio CLI
+
+The Developer Studio CLI (`gsds`) is now available, letting you scaffold widgets, preview them live in your community's No-Code Builder, test Connectors, and manage sitewide scripts and stylesheets, all from your terminal. Install it from npm as `@gainsight-hub/developer-studio-cli`. See [CLI](/cli/) for details.
+
 ## 2026-09-21 - Web SDK: User Context
 
 The Web SDK can now read the current viewer and look up community members directly in the browser, without building a Connector. Use `ChWebSdk.Context.User()` to get the signed-in user (and a guest result when no one is signed in), and the `ChWebSdk.User.*` methods to fetch, list, filter, and search members. All responses use one unified user model and never include private data such as email addresses, message counts, or login source. See [User Context](/sdk/web-sdk/user-context) for the full reference.

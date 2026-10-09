@@ -14,58 +14,57 @@ Everything you need to extend your community with custom extensions, built in th
 ### [Extensions] Extensions
 
 - [Extensions](https://developer-portal.gainsight.com/docs/custom-widgets/v2.md): Extensions — widgets, scripts, and stylesheets declared in a single registry file and published from your Git repository
+- [Customization Guardrails](https://developer-portal.gainsight.com/docs/custom-widgets/v2/customization-guardrails.md): Decision guide for choosing a customization approach before you start — ranks no-code configuration, custom widgets, and other options by how safely they survive platform updates
 
-### [Extensions] GitHub Connections
+### [Extensions] Tutorials
+
+- [Your First Widget](https://developer-portal.gainsight.com/docs/custom-widgets/v2/build-first-widget.md): A hands-on tutorial that walks you through creating, configuring, and publishing a React custom widget from scratch
+- [Your First Script](https://developer-portal.gainsight.com/docs/custom-widgets/v2/first-script.md): A hands-on tutorial that walks you through creating, registering, and publishing a global script from scratch
+- [Your First Stylesheet](https://developer-portal.gainsight.com/docs/custom-widgets/v2/first-stylesheet.md): A hands-on tutorial that walks you through creating, registering, and publishing a global stylesheet from scratch
+
+### [Extensions] Connect GitHub
 
 - [Connect Your GitHub Account](https://developer-portal.gainsight.com/docs/custom-widgets/v2/connect-github.md): Connect your GitHub account or organization to enable widget, script, and stylesheet repository management
+- [Repository & Branch Settings](https://developer-portal.gainsight.com/docs/custom-widgets/v2/repository-settings.md): Configure which GitHub repository and branch the platform tracks for widget, script, and stylesheet builds
 - [Admin Approval](https://developer-portal.gainsight.com/docs/custom-widgets/v2/admin-approval.md): Request and complete GitHub connection when your organization requires administrator approval before installing external apps
 - [Approve GitHub Access](https://developer-portal.gainsight.com/docs/custom-widgets/v2/approve-github-access.md): Review and approve a pending GitHub app installation request as your organization's GitHub administrator
 - [Multiple Organizations](https://developer-portal.gainsight.com/docs/custom-widgets/v2/multiple-organizations.md): Connect, manage, and remove multiple GitHub organizations in a single community
 
-### [Extensions] Setup
-
-- [Repository & Branch Settings](https://developer-portal.gainsight.com/docs/custom-widgets/v2/repository-settings.md): Configure which GitHub repository and branch the platform tracks for widget, script, and stylesheet builds
-- [Repository Layout](https://developer-portal.gainsight.com/docs/custom-widgets/v2/project-setup.md): Required file and directory layout for a repository that publishes widgets, scripts, and stylesheets
-
-### [Extensions] Tutorials
-
-- [Your First Widget](https://developer-portal.gainsight.com/docs/custom-widgets/v2/build-first-widget.md): A hands-on tutorial that walks you through creating, configuring, and publishing a custom widget from scratch
-- [Your First Script](https://developer-portal.gainsight.com/docs/custom-widgets/v2/first-script.md): A hands-on tutorial that walks you through creating, registering, and publishing a global script from scratch
-- [Your First Stylesheet](https://developer-portal.gainsight.com/docs/custom-widgets/v2/first-stylesheet.md): A hands-on tutorial that walks you through creating, registering, and publishing a global stylesheet from scratch
-
 ### [Extensions] Widgets
 
 - [Widget Runtime](https://developer-portal.gainsight.com/docs/custom-widgets/v2/core-concepts.md): How custom widgets are loaded, initialized, and managed at runtime — the init contract, lifecycle, props, design tokens, and best practices
-- [Use Design Tokens](https://developer-portal.gainsight.com/docs/custom-widgets/v2/design-tokens.md): Apply a community's branding — colors, fonts, and other theme values — to your widget's CSS using design tokens
-- [Hosting Widgets](https://developer-portal.gainsight.com/docs/custom-widgets/v2/hosting-widgets.md): Choose how to host your widget — externally at a URL or in your repository
-- [Configurable Widgets](https://developer-portal.gainsight.com/docs/custom-widgets/v2/configurable-widgets.md): Let community admins customize your widget in the No-Code Builder by defining a configuration form in extensions_registry.json
 - [Rendering & DOM](https://developer-portal.gainsight.com/docs/custom-widgets/v2/rendering-and-dom.md): How widget code runs inside Shadow DOM, how to query the DOM correctly, and how to handle multiple widget instances
 - [Using React](https://developer-portal.gainsight.com/docs/custom-widgets/v2/using-react.md): Build interactive widgets with React — from a minimal hello-world to advanced patterns like custom hooks, design-token integration, and error boundaries
-- [Widget Runtime Reference](https://developer-portal.gainsight.com/docs/custom-widgets/v2/sdk-api-reference.md): Properties, methods, and events on the sdk object passed to your widget's init(sdk) function — a different object from window.WidgetServiceSDK; see SDK Concepts for how the two relate
-- [Widget Definition Reference](https://developer-portal.gainsight.com/docs/custom-widgets/v2/widget-schema.md): Reference for widget entries in the widgets array of extensions_registry.json — fields, types, defaults, and validation rules
-- [Design Tokens Reference](https://developer-portal.gainsight.com/docs/custom-widgets/v2/design-tokens-reference.md): The full catalog of design-token CSS custom properties available to a widget, grouped by purpose, with default values
+- [Configurable Widgets](https://developer-portal.gainsight.com/docs/custom-widgets/v2/configurable-widgets.md): Let community admins customize your widget in the No-Code Builder by defining a configuration form in extensions_registry.json
+- [Use Design Tokens](https://developer-portal.gainsight.com/docs/custom-widgets/v2/design-tokens.md): Apply a community's branding — colors, fonts, and other theme values — to your widget's CSS using design tokens
+- [Hosting Widgets](https://developer-portal.gainsight.com/docs/custom-widgets/v2/hosting-widgets.md): Choose how to host your widget — externally at a URL or in your repository
 
 ### [Extensions] Scripts & Stylesheets
 
 - [Scripts Overview](https://developer-portal.gainsight.com/docs/custom-widgets/v2/scripts-overview.md): How global scripts work — where they run, how they're injected, and how they compare to widgets
-- [Script Definition Reference](https://developer-portal.gainsight.com/docs/custom-widgets/v2/scripts.md): Reference for script entries in the scripts array of extensions_registry.json — fields, placement, HTML attributes, and validation rules
 - [Stylesheets Overview](https://developer-portal.gainsight.com/docs/custom-widgets/v2/stylesheets-overview.md): How global stylesheets work — where they're injected, how they're scoped, and how they compare to widget styles
-- [Stylesheet Definition Reference](https://developer-portal.gainsight.com/docs/custom-widgets/v2/stylesheets.md): Reference for stylesheet entries in the stylesheets array of extensions_registry.json — fields, placement, HTML attributes, and validation rules
 - [Page Targeting](https://developer-portal.gainsight.com/docs/custom-widgets/v2/page-targeting.md): Control when global scripts and stylesheets load (not widgets) — target specific pages, locales, and user states via condition rules
 - [Writing Defensive Scripts and Includes](https://developer-portal.gainsight.com/docs/custom-widgets/v2/defensive-scripts-and-includes.md): Write custom scripts and header/footer includes that survive platform updates — load safely, fail gracefully, and avoid collisions with platform code
 
 ### [Extensions] Publishing
 
 - [Build & Publish](https://developer-portal.gainsight.com/docs/custom-widgets/v2/build-and-publish.md): How widget, script, and stylesheet builds are triggered, processed, and published automatically when you push to your watched branch — no separate preview or promotion step
-- [Registry Reference](https://developer-portal.gainsight.com/docs/custom-widgets/v2/registry-reference.md): Reference for the root of extensions_registry.json — the widgets, scripts, stylesheets, and importMaps arrays
 - [Content Security](https://developer-portal.gainsight.com/docs/custom-widgets/v2/content-security.md): Automated pre-publish security scanning the platform runs on every push, with no configuration needed; for guidance on which customization approach to choose, see Customization Guardrails
-- [Customization Guardrails](https://developer-portal.gainsight.com/docs/custom-widgets/v2/customization-guardrails.md): Decision guide for choosing a customization approach before you start — ranks no-code configuration, custom widgets, and other options by how safely they survive platform updates
 
 ### [Extensions] Recipes
 
 - [Recipes](https://developer-portal.gainsight.com/docs/custom-widgets/recipes.md): Landing page linking to task-specific extension recipes — currently Preview and Promote, and Force Republish
 - [Preview and Promote](https://developer-portal.gainsight.com/docs/custom-widgets/recipes/preview-and-promote.md): Preview a widget, script, or stylesheet build on a test branch and promote it to production
 - [Force Republish](https://developer-portal.gainsight.com/docs/custom-widgets/recipes/force-republish.md): Manually trigger a rebuild and republish of a widget, script, or stylesheet without a code change
+
+### [Extensions] Reference
+
+- [Registry Reference](https://developer-portal.gainsight.com/docs/custom-widgets/v2/registry-reference.md): Reference for the root of extensions_registry.json — the widgets, scripts, stylesheets, and importMaps arrays
+- [Widget Definition Reference](https://developer-portal.gainsight.com/docs/custom-widgets/v2/widget-schema.md): Reference for widget entries in the widgets array of extensions_registry.json — fields, types, defaults, and validation rules
+- [Script Definition Reference](https://developer-portal.gainsight.com/docs/custom-widgets/v2/scripts.md): Reference for script entries in the scripts array of extensions_registry.json — fields, placement, HTML attributes, and validation rules
+- [Stylesheet Definition Reference](https://developer-portal.gainsight.com/docs/custom-widgets/v2/stylesheets.md): Reference for stylesheet entries in the stylesheets array of extensions_registry.json — fields, placement, HTML attributes, and validation rules
+- [Repository Layout](https://developer-portal.gainsight.com/docs/custom-widgets/v2/project-setup.md): Required file and directory layout for a repository that publishes widgets, scripts, and stylesheets
+- [Design Tokens Reference](https://developer-portal.gainsight.com/docs/custom-widgets/v2/design-tokens-reference.md): The full catalog of design-token CSS custom properties available to a widget, grouped by purpose, with default values
 
 ### [Extensions] Troubleshooting
 
@@ -77,27 +76,30 @@ Everything you need to extend your community with custom extensions, built in th
 - [Connectors](https://developer-portal.gainsight.com/docs/connectors.md): Overview of connectors — configure secure server-side proxies to call external APIs from widget code
 - [How Connectors Work](https://developer-portal.gainsight.com/docs/connectors/how-connectors-work.md): How the connector pipeline processes requests and responses — parameter merging, variable resolution, secret injection, authentication, and payload transformation
 
-### [Connectors] Setup
+### [Connectors] Tutorial
 
 - [Build Your First Connector](https://developer-portal.gainsight.com/docs/connectors/build-first-connector.md): A hands-on tutorial that walks you through creating a connector, storing credentials securely, and calling it from widget code
+
+### [Connectors] Configure
+
 - [Configuration](https://developer-portal.gainsight.com/docs/connectors/configuration.md): Connector fields — endpoint URL, HTTP method, and routing settings, including which are required
 - [Choose an Authentication Type](https://developer-portal.gainsight.com/docs/connectors/choose-authentication.md): Choose the right authentication type for your connector based on what your external API requires
 - [Authentication](https://developer-portal.gainsight.com/docs/connectors/authentication.md): Connector authentication types — None, API Key, OAuth Client Credentials, JWT, and OAuth JWT Bearer — and their configuration fields
 - [Secrets and Variables](https://developer-portal.gainsight.com/docs/connectors/secrets.md): Named key-value pairs — Secrets (masked credentials) and Variables (plain-text config) — referenced from connector configuration via get_secret()/get_variable()
-
-### [Connectors] Request & Response
-
 - [Headers & Query Parameters](https://developer-portal.gainsight.com/docs/connectors/headers-and-query-parameters.md): Add custom HTTP headers and query parameters to connector requests
 - [Dynamic URL Path Segments](https://developer-portal.gainsight.com/docs/connectors/dynamic-url-paths.md): Use caller-supplied values as path segments in connector URLs, with URL-safe validation
+- [HTTP Caching](https://developer-portal.gainsight.com/docs/connectors/http-caching.md): How the platform automatically caches connector responses using standard HTTP caching headers — no configuration required
+
+### [Connectors] Transform Data
+
 - [Request Transformation](https://developer-portal.gainsight.com/docs/connectors/payload-template.md): Request transformation — the Jinja2 template for the outgoing request body, and the body_text and body_raw variables available to it
 - [Response Transformation](https://developer-portal.gainsight.com/docs/connectors/response-transformation.md): Response transformation reference — the Response Body and Response Content-Type fields, the response variables available to templates, and response template error handling
 - [Response Transformation Recipes](https://developer-portal.gainsight.com/docs/connectors/response-transformation-recipes.md): Worked Jinja2 examples and common gotchas for reshaping, filtering, and resolving data in an upstream API response before it reaches the widget
 - [Template Variables](https://developer-portal.gainsight.com/docs/connectors/template-variables.md): Reference of Jinja2 variables and functions available in connector request and response templates
-- [HTTP Caching](https://developer-portal.gainsight.com/docs/connectors/http-caching.md): How the platform automatically caches connector responses using standard HTTP caching headers — no configuration required
 
-### [Connectors] Using Connectors
+### [Connectors] Use from Widgets
 
-- [Calling from Widget Code](https://developer-portal.gainsight.com/docs/connectors/calling-from-widgets.md): How to use the SDK to call connectors from widget code
+- [Calling from Widget Code](https://developer-portal.gainsight.com/docs/connectors/calling-from-widgets.md): How to call connectors from widget code with sdk.connectors
 - [Passing User Context](https://developer-portal.gainsight.com/docs/connectors/passing-user-context.md): How to securely pass user identity and context to connectors using server-side template variables instead of browser-supplied parameters
 - [Filtering Sensitive Data](https://developer-portal.gainsight.com/docs/connectors/filtering-sensitive-data.md): Prevent sensitive API data from reaching the browser by filtering responses in the connector definition instead of in widget code
 - [Testing & Debugging](https://developer-portal.gainsight.com/docs/connectors/testing-and-debugging.md): Test connector requests and diagnose failures using the built-in test tool
@@ -114,20 +116,24 @@ Everything you need to extend your community with custom extensions, built in th
 
 ### [SDK] SDK
 
-- [SDK](https://developer-portal.gainsight.com/docs/sdk.md): SDK documentation — Widget SDK for connectors and Web SDK for community pages
-- [SDK Concepts](https://developer-portal.gainsight.com/docs/sdk/concepts.md): Why these docs use the word SDK for three different things — two constructed libraries (Widget SDK, Web SDK) and one runtime context object — and how they relate
+- [SDK](https://developer-portal.gainsight.com/docs/sdk.md): The sdk object passed to a widget's init(sdk) function — widget runtime, Connectors SDK (sdk.connectors) and Web SDK (sdk.web)
+- [SDK Concepts](https://developer-portal.gainsight.com/docs/sdk/concepts.md): How the single sdk object passed to init(sdk) combines the widget runtime with the sdk.connectors and sdk.web namespaces, and why each is a separate layer
 
-### [SDK] Widget SDK
+### [SDK] Runtime
 
-- [Widget SDK](https://developer-portal.gainsight.com/docs/sdk/widget-sdk/overview.md): JavaScript SDK for calling connectors from widgets — globally available as window.WidgetServiceSDK, distinct from the sdk parameter passed to init(sdk); see SDK Concepts for how they relate
-- [Methods and Constructors](https://developer-portal.gainsight.com/docs/sdk/widget-sdk/methods-constructors.md): Complete API reference for the WidgetServiceSDK JavaScript class — constructor, execute() method, and error handling
-- [Examples](https://developer-portal.gainsight.com/docs/sdk/widget-sdk/examples.md): Code examples for common WidgetServiceSDK usage patterns — GET, POST, PUT, and DELETE requests, custom headers, and request timeouts
+- [Widget Runtime Reference](https://developer-portal.gainsight.com/docs/sdk/runtime-reference.md): Properties, methods, and events on the sdk object passed to your widget's init(sdk) function, including sdk.connectors and sdk.web
+
+### [SDK] Connectors SDK
+
+- [Connectors SDK](https://developer-portal.gainsight.com/docs/sdk/connectors-sdk/overview.md): JavaScript client for calling connectors from widgets — reached as sdk.connectors on the sdk object passed to init(sdk)
+- [Reference](https://developer-portal.gainsight.com/docs/sdk/connectors-sdk/reference.md): Complete API reference for the Connectors SDK (sdk.connectors) — access, configure(), execute() method, and error handling
+- [Examples](https://developer-portal.gainsight.com/docs/sdk/connectors-sdk/examples.md): Code examples for common sdk.connectors usage patterns — GET, POST, PUT, and DELETE requests, custom headers, and request timeouts
 
 ### [SDK] Web SDK
 
-- [Web SDK](https://developer-portal.gainsight.com/docs/sdk/web-sdk/overview.md): Overview of the Community Hub Web SDK (ChWebSdk) — the browser-side JavaScript API for searching content, managing users, and subscribing to topics from community pages.
-- [Methods and Constructors](https://developer-portal.gainsight.com/docs/sdk/web-sdk/methods-constructors.md): Complete API reference for the Community Hub Web SDK — DOM utilities, Content, User, Subscription methods, search options, and error handling.
-- [User Context](https://developer-portal.gainsight.com/docs/sdk/web-sdk/user-context.md): Complete reference for user context in the ChWebSdk — fetching the current viewer, looking up community members, the full User object schema, guest handling, and field availability by method.
+- [Web SDK](https://developer-portal.gainsight.com/docs/sdk/web-sdk/overview.md): Overview of the Community Hub Web SDK (sdk.web) — the browser-side JavaScript API for searching content, managing users, and subscribing to topics from community pages.
+- [Reference](https://developer-portal.gainsight.com/docs/sdk/web-sdk/methods-constructors.md): Complete API reference for the Community Hub Web SDK — DOM utilities, Content, User, Subscription methods, search options, and error handling.
+- [User Context](https://developer-portal.gainsight.com/docs/sdk/web-sdk/user-context.md): Complete reference for user context in the Web SDK — fetching the current viewer, looking up community members, the full User object schema, guest handling, and field availability by method.
 - [Examples](https://developer-portal.gainsight.com/docs/sdk/web-sdk/examples.md): Runnable code examples for the Web SDK — search, subscriptions, users, DOM observation, and script loading.
 
 ### [CLI] CLI

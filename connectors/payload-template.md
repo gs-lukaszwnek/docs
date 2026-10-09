@@ -31,7 +31,7 @@ Two variables are specific to payload templates:
 Both are available for POST, PUT, and PATCH requests. For GET requests (or any request with no body), both are `None`. If you render a `None` variable in a template, it produces the literal string `None`, not an empty string — so always guard with a default filter (e.g., {{ body\_text | default('') }}) when the variable may be absent.
 
 ::: info Where `body_text` comes from
-`body_text` is this template's view of the incoming request body. The widget sends that body through the SDK's `payload` option — see [Widget SDK Methods and Constructors](/sdk/widget-sdk/methods-constructors) — and it arrives here as `body_text`.
+`body_text` is this template's view of the incoming request body. The widget sends that body through the SDK's `payload` option — see the Connectors SDK [Reference](/sdk/connectors-sdk/reference) — and it arrives here as `body_text`.
 
 This is a separate layer from the declarative `body` field used in [Dynamic Options](/custom-widgets/v2/widget-schema#api-endpoint-object) and the [Widget Definition Reference](/custom-widgets/v2/widget-schema#content-object).
 :::

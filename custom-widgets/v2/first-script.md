@@ -14,11 +14,18 @@ In this tutorial, you will create a global script from scratch, register it in `
 * You have a GitHub account.
 * You have access to Sources in your platform (**Integrations** → **Developer Studio** → **Sources**).
 * You have a connected GitHub organization — see [Connect Your GitHub Account](connect-github) if you haven't connected one yet.
-* You have a repository from the [template](https://github.com/gainsight-hub/widgets-repository-template), enabled in Sources with `main` as the watched branch — see [Repository Layout](project-setup) and [Repository & Branch Settings](repository-settings).
+* You have the Developer Studio CLI installed — see [Get Started with the CLI](/cli/getting-started).
+* You have a project created with `gsds init`, pushed to GitHub, and enabled in Sources with `main` as the watched branch — see [Repository Layout](project-setup#quick-start-create-a-project-with-the-cli) and [Repository & Branch Settings](repository-settings).
 
-## Step 1: Create the Script File
+## Step 1: Scaffold the Script
 
-In your repository, create the directory `scripts/hello/` and inside it create `script.js` with this content:
+From the root of your project, run:
+
+```sh
+gsds script new hello
+```
+
+`gsds script new` creates `scripts/hello/script.js` and adds an entry for it to `extensions_registry.json`. Open `scripts/hello/script.js` and replace its content with:
 
 ```javascript
 console.log('Hello from your first global script!')
@@ -26,9 +33,9 @@ console.log('Hello from your first global script!')
 
 This is a plain JavaScript file — no module syntax, no SDK. Global scripts run directly in the page context, so anything you would write in a normal `<script>` tag works here.
 
-## Step 2: Register the Script
+## Step 2: Review the Registry Entry
 
-Open `extensions_registry.json` at the root of your repository and add this entry to the `scripts` array:
+Open `extensions_registry.json` at the root of your project. `gsds script new` added this entry to the `scripts` array. Add a `description` so the entry looks like this:
 
 ```json
 {
@@ -43,13 +50,14 @@ Open `extensions_registry.json` at the root of your repository and add this entr
 }
 ```
 
-The `name` field is the script's unique identifier within the `scripts` array. The `path` points to the file you just created, relative to the repository root. `placement` tells the platform where to inject the `<script>` tag — `head` runs the script as early as possible.
+The `name` field is the script's unique identifier within the `scripts` array. The `path` points to the script file, relative to the repository root. `placement` tells the platform where to inject the `<script>` tag — `head` runs the script as early as possible, and is the default `gsds script new` uses.
 
 ## Step 3: Push and Publish
 
-Commit and push your changes:
+Run `gsds build` to validate the registry, then commit and push your changes:
 
 ```bash
+gsds build
 git add extensions_registry.json scripts/hello/script.js
 git commit -m "Add hello script"
 git push
@@ -95,7 +103,7 @@ For the full list of targeting fields and operators, see [Page Targeting](page-t
 
 ## What You Built
 
-You created a JavaScript file, registered it in the platform, pushed it to production, and verified it runs on community pages. You then added a rule to target a specific page. The script runs directly in the page context with no SDK, on every request that matches its rules.
+You scaffolded a script with the CLI, registered it in the platform, pushed it to production, and verified it runs on community pages. You then added a rule to target a specific page. The script runs directly in the page context with no SDK, on every request that matches its rules.
 
 ## What's Next
 

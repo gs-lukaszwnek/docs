@@ -39,11 +39,11 @@ gsds init acme-widgets
 cd acme-widgets
 ```
 
-**Reusing an existing repo** — for example one cloned from the [Widgets Repository Template](https://github.com/gainsight-hub/widgets-repository-template), or any project that already has `extensions_registry.json`, `connectors_registry.json`, or a `gsds.json`:
+**Reusing an existing repo** — for example an older repository created from the [Widgets Repository Template](https://github.com/gainsight-hub/widgets-repository-template) before the CLI existed, or any project that already has `extensions_registry.json`, `connectors_registry.json`, or a `gsds.json`:
 
 ```sh
 cd acme-widgets
-gsds init acme-widgets
+gsds init .
 ```
 
 `gsds init` recognizes that shape automatically — no extra flag needed — and backfills only whatever's missing (`gsds.json`, `AGENTS.md`, `README.md`, `.gitignore`, and the registries if absent). It never overwrites a file it finds, so nothing you already have is at risk.
@@ -70,7 +70,7 @@ gsds login --status
 
 ## 4. Scaffold a widget
 
-From your project root, scaffold a React widget:
+From your project root, scaffold a widget. This example uses React; run `gsds create` without flags to choose the name, framework, and category interactively instead:
 
 ```sh
 gsds create --name revenue-overview --framework react --category Analytics

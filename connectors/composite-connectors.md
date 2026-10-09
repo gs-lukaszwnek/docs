@@ -196,9 +196,8 @@ Regular connectors use `body_text` and `body_raw` directly in payload templates.
 To call a composite connector from widget code, use `sdk.connectors.composite.execute()`:
 
 ```html
-<script>
-(async () => {
-  const sdk = new window.WidgetServiceSDK();
+<script type="module">
+export async function init(sdk) {
   try {
     const data = await sdk.connectors.composite.execute({
       permalink: "contact-orders"
@@ -207,7 +206,7 @@ To call a composite connector from widget code, use `sdk.connectors.composite.ex
   } catch (error) {
     console.error("Connector request failed:", error);
   }
-})();
+}
 </script>
 ```
 
@@ -220,9 +219,8 @@ The HTTP method is always POST — it is not a configurable parameter. The SDK o
 To pass a request body, include the `payload` option as a plain object. The SDK handles serialisation. Use `queryParams` to append URL query parameters — these are available in step templates as `request.query_parameters.<key>`:
 
 ```html
-<script>
-(async () => {
-  const sdk = new window.WidgetServiceSDK();
+<script type="module">
+export async function init(sdk) {
   try {
     const data = await sdk.connectors.composite.execute({
       permalink: "contact-orders",
@@ -233,7 +231,7 @@ To pass a request body, include the `payload` option as a plain object. The SDK 
   } catch (error) {
     console.error("Connector request failed:", error);
   }
-})();
+}
 </script>
 ```
 

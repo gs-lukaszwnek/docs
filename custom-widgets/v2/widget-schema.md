@@ -59,7 +59,7 @@ An empty `settings: {}` object is valid — all fields take their defaults.
 | `cacheTtlSeconds` | integer | No | — | Cache duration in seconds — use with `cacheStrategy: "ttl"` |
 | `requiresAuthentication` | boolean | No | `false` | Not supported — leave `false` or omit |
 | `headers` | object | No | — | Optional headers sent with the request |
-| `body` | object | No | — | Optional request body, for `POST`. This declarative `body` is the platform-side request body for content fetches — distinct from the SDK `widgetServiceSdk.connectors.execute({ payload })` client option. See [Widget SDK Methods and Constructors](/sdk/widget-sdk/methods-constructors). |
+| `body` | object | No | — | Optional request body, for `POST`. This declarative `body` is the platform-side request body for content fetches — distinct from the SDK `sdk.connectors.execute({ payload })` client option. See the Connectors SDK [Reference](/sdk/connectors-sdk/reference). |
 | `params` | object | No | — | Optional query parameters |
 
 ### Source Block
@@ -243,7 +243,7 @@ Used for both `endpoint` and `valuesEndpoint`.
 | `endpoint` | string | Yes | HTTPS URL for the API call. Supports [URL template tokens](#url-template-tokens). Must start with `https://`. |
 | `method` | string | Yes | HTTP method — `"GET"` or `"POST"` |
 | `headers` | object | No | Additional HTTP headers. See [Disallowed Headers](#disallowed-headers). |
-| `body` | object | No | Request body, for `POST` requests. This declarative `body` is the platform-side request body for dynamic-options fetches — distinct from the SDK `widgetServiceSdk.connectors.execute({ payload })` client option. See [Widget SDK Methods and Constructors](/sdk/widget-sdk/methods-constructors). |
+| `body` | object | No | Request body, for `POST` requests. This declarative `body` is the platform-side request body for dynamic-options fetches — distinct from the SDK `sdk.connectors.execute({ payload })` client option. See the Connectors SDK [Reference](/sdk/connectors-sdk/reference). |
 | `params` | object | No | Query parameters appended to the URL after template interpolation. |
 
 #### URL Template Tokens

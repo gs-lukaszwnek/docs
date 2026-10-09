@@ -25,7 +25,7 @@ Scaffolds a new project, or backfills missing files into an existing widget proj
 * `gsds.json`
 * the legacy `widget_registry.json` — migrated to `extensions_registry.json` automatically, content preserved byte-for-byte
 
-This covers the common case of an existing repo: one cloned or forked from the [Widgets Repository Template](https://github.com/gainsight-hub/widgets-repository-template), or any project already using `gsds`. Re-running `gsds init` against it backfills only what's missing (for example a `gsds.json` a template clone never had) and leaves every existing file untouched.
+This covers the common case of an existing repo: an older one created from the [Widgets Repository Template](https://github.com/gainsight-hub/widgets-repository-template) before the CLI existed, or any project already using `gsds`. Re-running `gsds init` against it backfills only what's missing (for example a `gsds.json` an older template-based repo never had) and leaves every existing file untouched.
 
 `--force` is only for a non-empty directory with **none** of the markers above — for example a freshly created GitHub repo with just a `README.md` or `LICENSE` from the "initialize this repository" checkbox. `--force` means "I know this directory is safe to scaffold into"; it does not relax the never-overwrite guarantee, and it is not the default answer to "I already have a repo" — most existing widget repos already carry one of the markers above and need no flag at all. A bare `widgets/` directory by itself does not count as a marker: it's too generic a signal (design assets, an unrelated monorepo subfolder) to prove a widget project on its own.
 

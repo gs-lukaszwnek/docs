@@ -75,9 +75,8 @@ For the full list of Jinja2 filters and functions, see [Template Variables](temp
 The HTTP method is always POST. It is not configurable by the caller — the SDK owns this detail.
 
 ```html
-<script>
-(async () => {
-  const sdk = new window.WidgetServiceSDK();
+<script type="module">
+export async function init(sdk) {
   try {
     const data = await sdk.connectors.composite.execute({
       permalink: "auth-and-fetch-user",
@@ -88,7 +87,7 @@ The HTTP method is always POST. It is not configurable by the caller — the SDK
   } catch (error) {
     console.error("Connector request failed:", error);
   }
-})();
+}
 </script>
 ```
 

@@ -14,12 +14,12 @@ React widgets use the same `init(sdk)` contract as any other **Custom Widget** �
 ## Prerequisites
 
 * **React 18+** and **ReactDOM 18+** (for `createRoot` API)
-* A bundler such as **Vite**, **Rollup**, or **webpack** to produce an ES module
+* The Developer Studio CLI (`gsds`) — see [Get Started with the CLI](/cli/getting-started). `gsds create --framework react` sets up React, TypeScript, and Vite for you
 * Familiarity with [ES modules](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules) and the `export` syntax
 
 ## Quick Start
 
-Here is the simplest possible React widget:
+Here is the shape of the simplest possible React widget. These two files show the `init(sdk)` contract only; they are not a project you can build as is:
 
 **`my-widget.js`**
 
@@ -48,6 +48,8 @@ export async function init(sdk) {
 <script type="module" src="my-widget.js"></script>
 ```
 
+JSX must be bundled before the browser can load it. To build and run a React widget, follow [Step-by-Step: Build a React Widget](#step-by-step-build-a-react-widget): `gsds create --framework react` scaffolds the files with the bundler set up, and `gsds build` produces the module.
+
 Paths in widget HTML are relative to the widget's directory (the `source.path` in your registry). The platform wraps your template in a Shadow DOM automatically — you only provide the inner HTML above. See [Repository Layout — Asset Paths](project-setup#asset-paths-in-widget-html) for details.
 
 ::: tip Use a dedicated mount container
@@ -68,94 +70,58 @@ createRoot(sdk.getContainer())
 
 The `sdk` object does **not** need to be bundled into your widget — your widget receives it through the `init(sdk)` function call at runtime, loaded via the platform's import map. You **must** bundle React and any other framework dependencies into your widget, but the `sdk` object itself is provided by the platform.
 
-### 1. Set Up Your Project
+### 1. Scaffold the Widget
 
-Create a new project for your widget:
+From the root of your project, run:
 
 ```bash
-mkdir my-community-widget && cd my-community-widget
-npm init -y
-npm install react react-dom
-npm install -D typescript @types/react @types/react-dom vite @vitejs/plugin-react
+gsds create --name task-list --framework react --category custom
 ```
 
-**`tsconfig.json`**
+`gsds create` makes `widgets/task-list/` with React, TypeScript, and Vite already configured, and adds the widget's entry to `extensions_registry.json`. The files this guide edits are:
 
-```json
-{
-  "compilerOptions": {
-    "target": "ES2020",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "jsx": "react-jsx",
-    "strict": true,
-    "esModuleInterop": true,
-    "outDir": "dist"
-  },
-  "include": ["src"]
-}
-```
+| File | Purpose |
+|------|---------|
+| `src/main.tsx` | Entry point — Vite bundles it into `dist/widget.js` |
+| `src/types.ts` | The `WidgetSDK` and `WidgetProps` types |
+| `src/widget.css` | The widget's styles — added to the Shadow DOM by `src/main.tsx` |
 
-**`vite.config.ts`**
-
-```typescript
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-
-export default defineConfig({
-  plugins: [react()],
-  build: {
-    lib: {
-      entry: 'src/index.tsx',
-      formats: ['es'],
-      fileName: 'widget',
-    },
-  },
-})
-```
+The registry entry's `source` points at the build output: `path` is `widgets/task-list/dist` and `entry` is `index.html`.
 
 > **Note:** React and ReactDOM are bundled into your widget output. Tree-shake aggressively and keep your dependency footprint small to minimize bundle size.
 
 ### 2. Create the Widget Entry Point
 
-The entry point exports the `init` function that mounts your React app and registers cleanup.
+The entry point exports the `init` function that mounts your React app and registers cleanup. The scaffolded **`src/main.tsx`** already does this: it waits for `sdk.whenReady()`, adds `src/widget.css` to the widget's Shadow DOM, mounts the `App` component, and unmounts it on `destroy`.
 
-> The TypeScript examples in this guide import a local `WidgetSDK` type. See the [Widget Runtime Reference](sdk-api-reference) for the full interface — you can create your own type file based on that, or skip types and use plain JavaScript.
+> The TypeScript examples in this guide import the `WidgetSDK` type from the scaffolded `src/types.ts`. See the [Widget Runtime Reference](/sdk/runtime-reference) for the full interface, and extend `src/types.ts` when you use more of it.
 
-**`src/index.tsx`**
+To mount the component you build in the next step instead of `App`, change two lines in `src/main.tsx`. Replace the `App` import with:
 
 ```typescript
-import { createRoot } from 'react-dom/client'
-import type { WidgetSDK } from './types/widget-sdk'
-import { TaskList } from './TaskList'
+import { TaskList } from "./TaskList";
+```
 
-export async function init(sdk: WidgetSDK): Promise<void> {
-  await sdk.whenReady()
+Then replace the `root.render(<App sdk={sdk} />);` line with:
 
-  const root = createRoot(sdk.getContainer())
-  root.render(<TaskList sdk={sdk} />)
-  sdk.on('destroy', () => root.unmount())
-}
+```typescript
+root.render(<TaskList sdk={sdk} />);
 ```
 
 ### 3. Build the React Component
 
-**`src/TaskList.tsx`**
+Create **`src/TaskList.tsx`** (you can delete the scaffolded `src/App.tsx`, which this guide does not use):
 
 ```typescript
 import { useState, useCallback } from 'react'
-import type { WidgetSDK } from './types/widget-sdk'
+import type { WidgetSDK } from './types'
 
 interface TaskListProps {
   sdk: WidgetSDK
 }
 
-interface WidgetProps {
-  title?: string
-}
-
 export function TaskList({ sdk }: TaskListProps) {
-  const props = sdk.getProps<WidgetProps>()
+  const props = sdk.getProps()
 
   const [tasks, setTasks] = useState<string[]>([])
   const [input, setInput] = useState('')
@@ -190,55 +156,57 @@ export function TaskList({ sdk }: TaskListProps) {
 }
 ```
 
-### 4. Define the HTML Template
+### 4. Style the Widget
 
-The HTML template is the markup you provide in your widget repository. The platform wraps it in a Shadow DOM automatically — you only supply the inner content:
+`src/main.tsx` adds `src/widget.css` to the widget's Shadow DOM, so your styles go in that file. Replace the content of **`src/widget.css`** with:
 
-```html
-<style>
-  :host {
-    display: block;
-    font-family: system-ui, sans-serif;
-  }
+```css
+:host {
+  display: block;
+  font-family: system-ui, sans-serif;
+}
 
-  h2 {
-    margin: 0 0 1rem;
-    font-size: 1.25rem;
-    color: var(--color-action-primary-default, #9254D9);
-  }
+h2 {
+  margin: 0 0 1rem;
+  font-size: 1.25rem;
+  color: var(--color-action-primary-default, #9254D9);
+}
 
-  ul {
-    list-style: none;
-    padding: 0;
-    margin: 0 0 1rem;
-  }
+ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+}
 
-  li {
-    padding: 0.5rem;
-    border-bottom: 1px solid #e5e7eb;
-  }
+li {
+  padding: 0.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
 
-  input[type="text"] {
-    flex: 1;
-    padding: 0.4rem 0.6rem;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-  }
+input[type="text"] {
+  flex: 1;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+}
 
-  button {
-    padding: 0.4rem 0.8rem;
-    background: var(--color-action-primary-default, #9254D9);
-    color: white;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-  }
-</style>
-
-<script type="module" src="widget.js"></script>
+button {
+  padding: 0.4rem 0.8rem;
+  background: var(--color-action-primary-default, #9254D9);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
 ```
 
-The `src="widget.js"` path matches the Vite output filename from `vite.config.ts` — copy `dist/widget.js` into your widget directory so it sits alongside `index.html`. Paths are relative to the widget's directory. See [Repository Layout — Asset Paths](project-setup#asset-paths-in-widget-html) for details.
+You do not need to change **`public/index.html`**. It is the widget's HTML template: the platform wraps it in a Shadow DOM, and it holds only the tag that loads the bundle:
+
+```html
+<script type="module" src="./widget.js"></script>
+```
+
+The `./widget.js` path matches the bundle Vite writes next to `index.html` in `dist/` — the scaffolded `vite.config.ts` names it `widget`. Paths are relative to the widget's directory. See [Repository Layout — Asset Paths](project-setup#asset-paths-in-widget-html) for details.
 
 **Key points:**
 
@@ -248,11 +216,15 @@ The `src="widget.js"` path matches the Vite output filename from `vite.config.ts
 
 ### 5. Bundle for Production
 
+From the root of your project, run:
+
 ```bash
-npm run build
+gsds build
 ```
 
-This produces `dist/widget.js` — an ES module ready to be published. Include it in your widget repository alongside the HTML template and [Widget Definition Reference](widget-schema) entry.
+This installs the widget's dependencies if they are missing and writes `dist/widget.js` — an ES module ready to be published — and `dist/index.html`. Commit the `dist/` directory with the rest of the widget: the platform publishes the files in `source.path`, so `dist/` must be in your repository.
+
+To try the widget in your community before you publish, run `gsds preview` — see [Get Started with the CLI](/cli/getting-started#_5-preview-it-in-your-community).
 
 ## Working with Props
 
@@ -260,10 +232,10 @@ When props change at runtime (e.g. an editor updates configuration in the **No-C
 
 ```typescript
 import { useState, useEffect } from 'react'
-import type { WidgetSDK } from './types/widget-sdk'
+import type { WidgetSDK } from './types'
 
 function MyWidget({ sdk }: { sdk: WidgetSDK }) {
-  const [props, setProps] = useState(sdk.getProps<{ title: string }>())
+  const [props, setProps] = useState(sdk.getProps() as { title: string })
 
   useEffect(() => {
     const unsubscribe = sdk.on('propsChanged', (newProps) => {
@@ -288,10 +260,10 @@ Extract the props subscription into a reusable hook so every component gets reac
 
 ```typescript
 import { useState, useEffect } from 'react'
-import type { WidgetSDK } from '../types/widget-sdk'
+import type { WidgetSDK } from '../types'
 
 export function useWidgetProps<T extends object>(sdk: WidgetSDK): T {
-  const [props, setProps] = useState<T>(sdk.getProps<T>())
+  const [props, setProps] = useState<T>(sdk.getProps() as T)
 
   useEffect(() => {
     const unsubscribe = sdk.on('propsChanged', (newProps) => {
@@ -321,7 +293,7 @@ Create a React context to make the `sdk` object available throughout your compon
 
 ```typescript
 import { createContext, useContext, type ReactNode } from 'react'
-import type { WidgetSDK } from '../types/widget-sdk'
+import type { WidgetSDK } from '../types'
 
 const WidgetSDKContext = createContext<WidgetSDK | null>(null)
 
@@ -363,7 +335,7 @@ export async function init(sdk: WidgetSDK) {
 ```typescript
 function UserGreeting() {
   const sdk = useWidgetSDK()
-  const props = sdk.getProps<{ username: string }>()
+  const props = sdk.getProps() as { username: string }
   return <p>Hello, {props.username}!</p>
 }
 ```
@@ -436,9 +408,9 @@ For general widget best practices (Shadow DOM, styling, cleanup, bundle size), s
 
 For common widget issues (mount point, styles, props, module errors), see [Common Issues](common-issues#widget-development-issues).
 
-## Template Repository
+## Complete Example
 
-For a complete working React widget (project structure, Vite config, build output, and import map setup), see the [React widget in the template repository](https://github.com/gainsight-hub/widgets-repository-template/tree/main/widgets/react_widget). Fork it to get started quickly.
+For a larger working React widget (project structure, Vite config, build output, and import map setup), see the [React widget example](https://github.com/gainsight-hub/widgets-repository-template/tree/main/widgets/react_widget). To start a new React widget, use `gsds create --framework react` as shown above.
 
 ## Next Steps
 

@@ -9,11 +9,13 @@ description: >-
 
 This page explains how custom widgets are loaded, initialized, and managed by the platform. It covers the runtime model that applies to **all** widgets regardless of framework — React, Vue, vanilla JavaScript, or anything else.
 
+The full API of the `sdk` object lives in the SDK tab — see the [Widget Runtime Reference](/sdk/runtime-reference).
+
 ## How Widgets Run
 
 Every widget runs inside a **Shadow DOM** that the platform creates for you. The Shadow DOM isolates your widget's styles and markup from the host page. At runtime, the platform also creates the **`sdk` object** that gives your code access to props, events, and the shadow root where your widget renders.
 
-Your widget's entry file is an HTML fragment, not a full document — no `<html>`, `<head>`, or `<body>` tags (see [Your First Widget](build-first-widget)). At the top level it may contain only an inline `<style>` block, your markup, and script tags (inline or `type="module"`); the platform inserts exactly this content into the shadow root it creates.
+Your widget's entry file is an HTML fragment, not a full document — no `<html>`, `<head>`, or `<body>` tags. `gsds create` scaffolds it for you (see [Your First Widget](build-first-widget)). At the top level it may contain only an inline `<style>` block, your markup, and script tags (inline or `type="module"`); the platform inserts exactly this content into the shadow root it creates.
 
 ```mermaid
 flowchart LR
@@ -88,7 +90,7 @@ export async function init(sdk) {
 }
 ```
 
-**When you see a different pattern:** `rendering-and-dom.md` shows an IIFE + `new WidgetServiceSDK()` + `document.querySelectorAll('gs-cc-registry-widget[...]')` example. That pattern is for scripts running OUTSIDE a widget instance (e.g. a page script iterating over multiple widget hosts). It is NOT the pattern for code running inside `init(sdk)`. If you are writing `init(sdk)`, use the skeleton above.
+**Calling connectors and the Web SDK:** inside `init(sdk)`, use `sdk.connectors.execute(...)` for connector calls and `sdk.web` for the community Web SDK (`undefined` where the host page has none, so check it before use).
 
 ## The `init(sdk)` Contract
 
@@ -232,7 +234,7 @@ The `on()` method returns an unsubscribe function, called when the listener is n
 
 ## Next Steps
 
-* [Widget Runtime Reference](sdk-api-reference) — Properties, methods, and events on the `sdk` object
+* [Widget Runtime Reference](/sdk/runtime-reference) — Properties, methods, and events on the `sdk` object
 * [Use Design Tokens](design-tokens) — Apply community branding to your widget's CSS
 * [Design Tokens Reference](design-tokens-reference) — The full token catalog and platform default values
 * [Using React](using-react) — Build widgets with React

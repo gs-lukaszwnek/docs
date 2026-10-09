@@ -25,6 +25,6 @@ API requests require authentication. See the [Authentication](/api/api-authentic
 
 ## Related
 
-* [Web SDK](/sdk/web-sdk/overview) — call community APIs from widget or script code without managing auth yourself
-* [Widget SDK](/sdk/widget-sdk/overview) — call [Connectors](/connectors/) from widget code to reach external APIs
+* [Web SDK](/sdk/web-sdk/overview) — call community APIs from widget code (`sdk.web`) or script code without managing auth yourself
+* [Connectors SDK](/sdk/connectors-sdk/overview) — call [Connectors](/connectors/) from widget code with `sdk.connectors` to reach external APIs
 * [Connectors](/connectors/) — configure secure proxy endpoints to external services

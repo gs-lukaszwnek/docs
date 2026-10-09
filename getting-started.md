@@ -25,8 +25,9 @@ The **No-Code Builder** is a visual editor where you can add, arrange, and confi
 
 **Best for**: Developers who want full control over what they ship.
 
-**Extensions** are the widgets, scripts, and stylesheets you publish from a Git repository. Declare them in `extensions_registry.json`, push to your watched branch, and the platform publishes them automatically — with version control, code review, and branch-based environments.
+**Extensions** are the widgets, scripts, and stylesheets you publish from a Git repository. Declare them in `extensions_registry.json`, push to your watched branch, and the platform publishes them automatically — with version control, code review, and branch-based environments. The Developer Studio CLI (`gsds`) creates the project, scaffolds each extension, and previews your work in your community before you publish.
 
+* [CLI](/cli/) — install `gsds` and scaffold your first project
 * [Extensions](/custom-widgets/v2/) — overview of widgets, scripts, and stylesheets
 * [Your First Widget](/custom-widgets/v2/build-first-widget) — hands-on widget tutorial
 * [Your First Script](/custom-widgets/v2/first-script) — hands-on script tutorial
@@ -44,7 +45,7 @@ The **No-Code Builder** is a visual editor where you can add, arrange, and confi
 
 **Best for**: Developers wiring live data into a widget.
 
-The **SDK** is the JavaScript library your widget code uses to call connectors and read community context from the browser.
+The **SDK** is the `sdk` object passed to your widget's `init(sdk)` function. Use `sdk.connectors` to call connectors and `sdk.web` to read community context from the browser.
 
 [SDK](/sdk/)
 
@@ -57,7 +58,7 @@ The **SDK** is the JavaScript library your widget code uses to call connectors a
 | Add a global script to the community        | [Your First Script](/custom-widgets/v2/first-script) |
 | Add a global stylesheet to the community    | [Your First Stylesheet](/custom-widgets/v2/first-stylesheet) |
 | Connect a widget to an external API         | [Build Your First Connector](/connectors/build-first-connector) |
-| Understand the SDK for calling connectors   | [SDK](/sdk/)                                            |
+| Use the `sdk` object in widget code         | [SDK](/sdk/)                                            |
 | Learn the key terms and concepts            | [Key Concepts](getting-started/concepts)                                |
 
 ## Next Steps

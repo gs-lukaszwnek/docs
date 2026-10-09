@@ -8,7 +8,7 @@ description: >-
 
 # Rendering & DOM
 
-To read or update your widget's own markup, query through its Shadow DOM host rather than the main `document` — plain `document.querySelector()` calls cannot reach elements inside your widget. Use this guide when your widget needs to manipulate its rendered DOM directly, especially if multiple instances of the same widget type can appear on the same page.
+To read or update your widget's own markup inside `init(sdk)`, query with `sdk.$()` / `sdk.$$()`, which are scoped to your widget's shadow root — plain `document.querySelector()` calls cannot reach elements inside your widget. Use this guide when your widget needs to manipulate its rendered DOM directly, especially if multiple instances of the same widget type can appear on the same page.
 
 ## Overview
 
@@ -23,7 +23,7 @@ This encapsulation has important implications:
 
 ## Shadow DOM and Host Element
 
-The host element is a `<gs-cc-registry-widget>` custom element that wraps your widget. To access elements inside your widget, query for the host element and access its `shadowRoot`.
+The host element is a `<gs-cc-registry-widget>` custom element that wraps your widget. Inside widget code, use `sdk.$()` / `sdk.$$()` from `init(sdk)` — they query your widget's own shadow root, so you never touch the host element yourself.
 
 **Incorrect — does not work inside a widget:**
 
@@ -32,7 +32,16 @@ The host element is a `<gs-cc-registry-widget>` custom element that wraps your w
 const el = document.querySelector('.my-class');
 ```
 
-**Correct — query through the shadow root:**
+**Correct — use `sdk.$()` inside `init(sdk)`, after `await sdk.whenReady()`:**
+
+```js
+export async function init(sdk) {
+  await sdk.whenReady()
+  const el = sdk.$('.my-class')
+}
+```
+
+**From a page script (outside any widget instance) — query through the shadow root:**
 
 ```js
 const hosts = document.querySelectorAll(
@@ -46,7 +55,7 @@ hosts.forEach(function(host) {
 });
 ```
 
-Replace `your_widget_type` with the `type` value from your widget's `extensions_registry.json` entry.
+Replace `your_widget_type` with the `type` value from your widget's `extensions_registry.json` entry. This host-element pattern is only for page scripts; widget code should use `sdk.$()`.
 
 The `*=` operator matches widgets whose `data-widget-type` attribute *contains* your type string — this is more robust than exact match (`=`) if the platform adds a prefix or suffix to the attribute value.
 
@@ -61,11 +70,11 @@ Whichever selector you query with — `root.querySelector(...)` here, or `sdk.$(
 window.WIDGET_BASE_URL = document.currentScript.src.replace(/[^/]+$/, '');
 ```
 
-Do not rely on `document.currentScript` inside widget code. Use the host element approach instead to interact with your widget's DOM.
+Do not rely on `document.currentScript` inside widget code. Use `sdk.$()` / `sdk.$$()` inside `init(sdk)` to interact with your widget's DOM.
 
 ## Multiple Widget Instances
 
-The same widget type can appear multiple times on a page. If you use `querySelector` (which returns only the **first** match), only one instance updates while the others remain unchanged.
+The same widget type can appear multiple times on a page. `init(sdk)` runs once per widget instance, and `sdk.$()` is scoped to that instance's shadow root, so each instance updates itself with no host iteration.
 
 **Incorrect — only updates the first instance:**
 
@@ -73,7 +82,17 @@ The same widget type can appear multiple times on a page. If you use `querySelec
 const host = document.querySelector('gs-cc-registry-widget[data-widget-type*="weather"]');
 ```
 
-**Correct — updates all instances:**
+**Correct — each instance runs its own `init(sdk)`:**
+
+```js
+export async function init(sdk) {
+  await sdk.whenReady()
+  // Update this instance's DOM
+  sdk.$('.my-class').textContent = 'Updated'
+}
+```
+
+**From a page script (outside any widget instance) — iterate all hosts:**
 
 ```js
 const hosts = document.querySelectorAll('gs-cc-registry-widget[data-widget-type*="weather"]');
@@ -109,9 +128,7 @@ flowchart TD
 
 A minimal widget that fetches weather data through a connector and updates its own DOM, combining the patterns above:
 
-::: tip `window.WidgetServiceSDK` vs. the `sdk` parameter
-The example below calls `new window.WidgetServiceSDK()` — a global **constructor** your widget code invokes directly, different from the `sdk` parameter passed to `init(sdk)`. See [SDK Concepts](/sdk/concepts) for how the two relate, [Widget Runtime Reference](sdk-api-reference) for the `init(sdk)` parameter, and [Widget SDK](/sdk/widget-sdk/overview) for the global `window.WidgetServiceSDK` constructor.
-:::
+Inside `init(sdk)`, `sdk.$()` already queries your widget's own shadow root, and `sdk.connectors` calls the connector. See [Widget Runtime Reference](/sdk/runtime-reference) for the `init(sdk)` object and [Connectors SDK](/sdk/connectors-sdk/overview) for `sdk.connectors`.
 
 ```html
 <!-- index.html — your widget entry file -->
@@ -123,55 +140,44 @@ The example below calls `new window.WidgetServiceSDK()` — a global **construct
   </div>
 </div>
 
-<script>
-(async function() {
-  // Find ALL instances of this widget type on the page
-  const hosts = document.querySelectorAll(
-    'gs-cc-registry-widget[data-widget-type*="weather"]'
-  );
+<script type="module">
+  // runs once per widget instance
+  export async function init(sdk) {
+    await sdk.whenReady()
 
-  for (var i = 0; i < hosts.length; i++) {
-    var host = hosts[i];
-    var root = host.shadowRoot;
-    if (!root) continue;
-
-    // Query elements through the shadow root, not document
-    var statusEl = root.querySelector('.status');
-    var resultEl = root.querySelector('.result');
-    var cityEl   = root.querySelector('.city-name');
-    var tempEl   = root.querySelector('.temperature');
+    const statusEl = sdk.$('.status')
+    const resultEl = sdk.$('.result')
+    const cityEl = sdk.$('.city-name')
+    const tempEl = sdk.$('.temperature')
 
     try {
-      var sdk = new window.WidgetServiceSDK();
-      var data = await sdk.connectors.execute({
+      const data = await sdk.connectors.execute({
         permalink: 'weather-api',
         method: 'GET',
         queryParams: { q: 'Warsaw' }
-      });
+      })
 
-      cityEl.textContent = data.city;
-      tempEl.textContent = data.temperature + '°C';
-      statusEl.style.display = 'none';
-      resultEl.style.display  = 'block';
+      cityEl.textContent = data.city
+      tempEl.textContent = data.temperature + '°C'
+      statusEl.style.display = 'none'
+      resultEl.style.display = 'block'
     } catch (err) {
-      statusEl.textContent = 'Failed to load weather data.';
-      console.error('Connector error:', err);
+      statusEl.textContent = 'Failed to load weather data.'
+      console.error('Connector error:', err)
     }
   }
-})();
 </script>
 ```
 
 **Key points in this example:**
 
-1. The SDK is loaded automatically by Customer Community and exposed as `window.WidgetServiceSDK` — no script tag is required
-2. All host elements are iterated with a `for` loop to safely await each instance
-3. Elements are queried through `host.shadowRoot`, not `document`
-4. Each instance is updated independently in the loop
+1. `init(sdk)` runs once per widget instance, so each instance updates its own DOM independently
+2. `sdk.connectors` is available on the `sdk` object — no script tag, import, or construction is required
+3. Elements are queried with `sdk.$()`, which is scoped to the widget's shadow root, not `document`
 
 ## Next Steps
 
 * [Widget Runtime](core-concepts) — The `init(sdk)` contract and SDK API reference
 * [Widget Definition Reference](widget-schema) — The `type` field used in querySelector selectors
-* [Widget SDK](/sdk/widget-sdk/overview) — SDK reference for the global `window.WidgetServiceSDK` constructor
+* [Connectors SDK](/sdk/connectors-sdk/overview) — Reference for `sdk.connectors`
 * [Card Grid widget in the template repository](https://github.com/gainsight-hub/widgets-repository-template/tree/main/widgets/card_grid) — Working example of Shadow DOM manipulation with dynamic content and connector data

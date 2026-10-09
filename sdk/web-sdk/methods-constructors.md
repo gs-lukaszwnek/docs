@@ -6,11 +6,13 @@ description: >-
   User, Subscription methods, search options, and error handling.
 ---
 
-#### Web SDK
+# Reference
 
-# Methods and Constructors
+Full reference for every method, option, and return type exposed by the Web SDK object (`sdk.web`) on community pages.
 
-Full reference for every method, option, and return type exposed by the `ChWebSdk` object on community pages.
+::: info
+Examples assume widget code inside your widget's `init(sdk)` function, after checking that `sdk.web` is defined. In scripts, which have no `init(sdk)`, substitute `window.ChWebSdk` for `sdk.web`. `window.ChWebSdk` in widget code still works but is deprecated — use `sdk.web`. Scripts keep using `window.ChWebSdk`. See [Web SDK](overview).
+:::
 
 ## DOM and lifecycle
 
@@ -19,7 +21,7 @@ Full reference for every method, option, and return type exposed by the `ChWebSd
 Run a callback when the DOM is ready. If the document is already loaded (`complete` or `interactive`), the callback runs immediately; otherwise it runs on `DOMContentLoaded`.
 
 ```javascript
-ChWebSdk.onReady(() => {
+sdk.web.onReady(() => {
   // Safe to use DOM and SDK
 })
 ```
@@ -29,7 +31,7 @@ ChWebSdk.onReady(() => {
 Wait until an element matching `selector` appears in the DOM, then run `callback` with that element. Uses a `MutationObserver` and disconnects after the element is found.
 
 ```javascript
-ChWebSdk.observeElement('#my-widget-root', (el) => {
+sdk.web.observeElement('#my-widget-root', (el) => {
   el.textContent = 'Widget loaded'
 })
 ```
@@ -46,7 +48,7 @@ Bind an event listener to the first element that matches `selector` (waiting for
 | `options`  | `boolean \| AddEventListenerOptions` | Optional; e.g. `{ once: true }` |
 
 ```javascript
-const unsubscribe = ChWebSdk.onEvent('.submit-btn', 'click', (ev) => {
+const unsubscribe = sdk.web.onEvent('.submit-btn', 'click', (ev) => {
   ev.preventDefault()
   // ...
 })
@@ -58,7 +60,7 @@ const unsubscribe = ChWebSdk.onEvent('.submit-btn', 'click', (ev) => {
 Load an external script by URL. If the script is already present, calls `callback` when appropriate. Scripts are loaded with `async: true`.
 
 ```javascript
-ChWebSdk.loadScript('https://example.com/plugin.js', () => {
+sdk.web.loadScript('https://example.com/plugin.js', () => {
   console.log('Script loaded')
 })
 ```
@@ -68,7 +70,7 @@ ChWebSdk.loadScript('https://example.com/plugin.js', () => {
 Inject a stylesheet link. No-op if a link with the same `href` already exists.
 
 ```javascript
-ChWebSdk.loadStyle('https://example.com/widget.css')
+sdk.web.loadStyle('https://example.com/widget.css')
 ```
 
 ***
@@ -91,11 +93,11 @@ Get a **content instance** for a specific type. Pass an optional **private topic
 
 ```javascript
 // Search only ideas (no privateId needed)
-const ideaInstance = ChWebSdk.Content.Idea()
+const ideaInstance = sdk.web.Content.Idea()
 const ideas = await ideaInstance.search('feature request', { limit: 10 })
 
 // Like a specific idea (privateId required)
-const idea = ChWebSdk.Content.Idea(12345)
+const idea = sdk.web.Content.Idea(12345)
 await idea.like()  // uses current logged-in user
 ```
 
@@ -120,7 +122,7 @@ All of these require a **browser environment** and, where applicable, a **logged
 Search **across all content types** (no content-type filter). Same options as the per-type search.
 
 ```javascript
-const results = await ChWebSdk.Content.search('help with login', {
+const results = await sdk.web.Content.search('help with login', {
   limit: 20,
   page: 0,
   fetchMetadata: true
@@ -131,36 +133,39 @@ const results = await ChWebSdk.Content.search('help with login', {
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `query` | `string` | — | Search query (required). |
+| `query` | `string` | — | Search query (required). Must be a non-empty string; an empty string is rejected. |
 | `contentType` | `string \| string[]` | — | Filter by type: `'idea'`, `'ideation'`, `'article'`, `'question'`, `'discussion'`, `'conversation'`, `'event'`, `'productUpdate'`. |
 | `limit` | `number` | `30` | Max results per page. |
 | `page` | `number` | `0` | Page index (0-based). |
 | `fetchMetadata` | `boolean` | `true` | When `true`, enriches results with author, engagement, and topic metadata from the backend. |
-| `categoryName` | `string` | — | Filter by community category name (top-level facet). |
+| `categoryName` | `string` | — | Filter by community category name (top-level category). |
 | `categoryIds` | `number[]` | — | Filter by category/forum IDs. |
 | `kbCategoryName` | `string` | — | Filter by knowledge base category name. |
 | `productAreaName` | `string` | — | Filter by product area name. |
-| `facetFilters` | `string[][]` | — | Raw facet filters for advanced filtering. |
+
+Search has no sort option and no date filter. Results are returned in relevance order, so none of the options above can list the newest, most viewed, most replied, or most liked content. The filters only narrow the set of results.
+
+Only content the current visitor can see is returned, whatever filters you set.
 
 ### Search result shape
 
-Each result includes at least: `id`, `title`, `url`, `contentType`, `excerpt`, and optionally `views`, `likes`, `votes`. When `fetchMetadata: true`, additional fields such as `firstPost`, `forum`, `numberOfViews`, `numberOfReplies`, `numberOfLikes`, `hasCurrentUserLiked`, `ideationStatus`, `bugStatus`, etc. are populated.
+Each result includes at least: `id`, `title`, `url`, `contentType`, `excerpt`, and optionally `views`, `likes`, `votes`. When `fetchMetadata: true`, additional fields such as `firstPost`, `forum`, `numberOfViews`, `numberOfReplies`, `numberOfLikes`, `hasCurrentUserLiked`, `ideationStatus`, `bugStatus`, etc. are populated. `firstPost` carries `author` (an object with `name`), `creationDate` (ISO 8601 timestamp) and `relativeCreationDate` (for example "1 year ago").
 
 ***
 
 ## Context Methods
 
-Access the current session context — who is viewing the page and their public community profile.
+Access the current session context — who is viewing the page and their community profile.
 
 ### `Context.User()`
 
 Fetch the current user. Always returns a `User` object — a guest resolves to the **guest projection** (`userId: null`, `username: "guest"`), never `null`. This replaces reading `inSidedData.user`.
 
-**Browser-only.** Takes no parameters. `rank`, `badges`, and `profileFields` are always hydrated. No private data (email, PM counts, login source) is ever returned — not even for the authenticated viewer.
+**Browser-only.** Takes no parameters. For a signed-in visitor `badges` and `profileFields` are always present and `rank` is present when the user has one; the guest result has no `profileFields` or `rank`. No private account data (email, PM counts, login source) is ever returned. The response does include the viewer's own private profile fields, which any script on the page can read; see [User Context](user-context#context-current-viewer).
 
 ```javascript
-ChWebSdk.onReady(async () => {
-  const me = await ChWebSdk.Context.User()
+sdk.web.onReady(async () => {
+  const me = await sdk.web.Context.User()
   if (me.userId === null) {
     // Guest — show login prompt
     return
@@ -184,7 +189,7 @@ Search users by a query string. Returns a reduced field set optimized for mentio
 Requires a non-empty string `query`. Returns **up to 25 users** — this limit is fixed and there is no size parameter.
 
 ```javascript
-const results = await ChWebSdk.User.search('john')
+const results = await sdk.web.User.search('john')
 results.forEach((u) => console.log(u.userId, u.username, u.avatar))
 ```
 
@@ -195,7 +200,7 @@ Batch-fetch up to 100 users by ID. Unresolved IDs are silently omitted — the r
 Numeric strings are accepted and coerced. Returns an array (not a map keyed by ID — iterate with `.find()` or build your own map).
 
 ```javascript
-const users = await ChWebSdk.User.getUsersById([101, 202, 303])
+const users = await sdk.web.User.getUsersById([101, 202, 303])
 const user = users.find((u) => u.userId === 101)
 ```
 
@@ -204,7 +209,7 @@ const user = users.find((u) => u.userId === 101)
 Fetch a single user by ID. Returns `null` if the ID does not resolve.
 
 ```javascript
-const user = await ChWebSdk.User.getById(101)
+const user = await sdk.web.User.getById(101)
 if (user) console.log(user.username)
 ```
 
@@ -213,7 +218,7 @@ if (user) console.log(user.username)
 List and filter community members with pagination and sorting. Returns `{ totalItems, items }` — **defaults to 25 items per page (max 100)**.
 
 ```javascript
-const { totalItems, items } = await ChWebSdk.User.list({
+const { totalItems, items } = await sdk.web.User.list({
   role: [7],
   sort: 'lastVisit',
   order: 'desc',
@@ -228,7 +233,7 @@ Key options: `search`, `role`, `joinDate`, `lastActivity`, `topics`, `replies`, 
 Returns users sorted by last visit descending. Convenience wrapper around `list()`.
 
 ```javascript
-const users = await ChWebSdk.User.getRecentlyActive(10)
+const users = await sdk.web.User.getRecentlyActive(10)
 ```
 
 ### `User.getByRole(role, options?)`
@@ -236,31 +241,13 @@ const users = await ChWebSdk.User.getRecentlyActive(10)
 List users that hold one or more roles. `role` is a single role ID or an array (OR semantics).
 
 ```javascript
-const { items } = await ChWebSdk.User.getByRole(7)
-const { items } = await ChWebSdk.User.getByRole([7, 9], { size: 50 })
+const { items } = await sdk.web.User.getByRole(7)
+const { items } = await sdk.web.User.getByRole([7, 9], { size: 50 })
 ```
 
 ### User object shape
 
-All User methods return objects conforming to the unified `User` model. Key fields:
-
-| Field | Type | Notes |
-|---|---|---|
-| `userId` | `number \| null` | Canonical ID. Use this in new code — `id` is a deprecated alias. |
-| `username` | `string` | Display username. |
-| `avatar` | `string` | Avatar URL, or `""` when none. |
-| `profileUrl` | `string \| null` | Relative URL to the profile page. |
-| `rank` | `Rank \| null` | Hydrated rank with display styling (always present). |
-| `badges` | `Badge[]` | Hydrated badges (always present). |
-| `profileFields` | `ProfileField[]` | Custom profile fields (always present). |
-| `isBanned` | `boolean` | |
-| `isModerator` | `boolean` | |
-| `mainRole` | `string \| null` | Role slug (e.g. `"moderator"`). |
-| `reputation` | `number \| null` | Reputation score. |
-| `topics`, `replies`, `points` | `number` | Activity counts. |
-| `joinDate` | `string` | ISO-8601 datetime (not a Unix timestamp). |
-
-See [User Context](user-context#user-object-shape) for every field, type, and availability table.
+All User methods except `search()` return the unified `User` model; `search()` returns a reduced `UserSearchResult`. A field with no value is omitted, not `null`, so read optional fields with `?.`. See [User Context](user-context#user-object-shape) for every field and its type, and [Field Availability by Method](user-context#field-availability-by-method) for which methods return which fields.
 
 ***
 
@@ -285,11 +272,11 @@ All subscription methods are **browser-only** and require valid identifiers.
 | `Subscription.getCategorySubscriptionStatus(categoryId)` | Returns `true` if the current user is subscribed to the category. |
 
 ```javascript
-await ChWebSdk.Subscription.subscribeToTopic('topic-123')
-const isSubscribed = await ChWebSdk.Subscription.getTopicSubscriptionStatus('topic-123')
+await sdk.web.Subscription.subscribeToTopic('topic-123')
+const isSubscribed = await sdk.web.Subscription.getTopicSubscriptionStatus('topic-123')
 
-await ChWebSdk.Subscription.subscribeToCategory('42')
-const subscribedToCategory = await ChWebSdk.Subscription.getCategorySubscriptionStatus('42')
+await sdk.web.Subscription.subscribeToCategory('42')
+const subscribedToCategory = await sdk.web.Subscription.getCategorySubscriptionStatus('42')
 ```
 
 ***
@@ -300,7 +287,7 @@ SDK methods that call the backend or DOM throw on failure. Use try/catch and han
 
 ```javascript
 try {
-  const users = await ChWebSdk.User.search('john')
+  const users = await sdk.web.User.search('john')
   console.log(users)
 } catch (err) {
   console.error('User search failed:', err.message)

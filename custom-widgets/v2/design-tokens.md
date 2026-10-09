@@ -34,5 +34,5 @@ Use only the tokens meant for widgets. The community's own pages have their own 
 ## Next Steps
 
 * [Design Tokens Reference](design-tokens-reference) — The full token catalog and platform default values
-* [Widget Runtime Reference](sdk-api-reference) — Properties, methods, and events on the `sdk` object
+* [Widget Runtime Reference](/sdk/runtime-reference) — Properties, methods, and events on the `sdk` object
 * [Widget Runtime](core-concepts) — Why widgets receive the `sdk` object and how the runtime model works

@@ -400,4 +400,4 @@ These style the community's own pages — its navigation, sidebars, and feeds. T
 ## Next Steps
 
 * [Use Design Tokens](design-tokens) — usage rules and how to reference these tokens in your widget's CSS
-* [Widget Runtime Reference](sdk-api-reference) — Properties, methods, and events on the `sdk` object
+* [Widget Runtime Reference](/sdk/runtime-reference) — Properties, methods, and events on the `sdk` object

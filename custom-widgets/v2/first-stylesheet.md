@@ -15,11 +15,18 @@ In this tutorial, you will create a global stylesheet from scratch, register it 
 * You have a GitHub account.
 * You have access to Sources in your platform (**Integrations** → **Developer Studio** → **Sources**).
 * You have a connected GitHub organization — see [Connect Your GitHub Account](connect-github) if you haven't connected one yet.
-* You have a repository from the [template](https://github.com/gainsight-hub/widgets-repository-template), enabled in Sources with `main` as the watched branch — see [Repository Layout](project-setup) and [Repository & Branch Settings](repository-settings).
+* You have the Developer Studio CLI installed — see [Get Started with the CLI](/cli/getting-started).
+* You have a project created with `gsds init`, pushed to GitHub, and enabled in Sources with `main` as the watched branch — see [Repository Layout](project-setup#quick-start-create-a-project-with-the-cli) and [Repository & Branch Settings](repository-settings).
 
-## Step 1: Create the Stylesheet File
+## Step 1: Scaffold the Stylesheet
 
-In your repository, create the directory `stylesheets/highlight/` and inside it create `style.css` with this content:
+From the root of your project, run:
+
+```sh
+gsds style new highlight
+```
+
+`gsds style new` creates `stylesheets/highlight/style.css` and adds an entry for it to `extensions_registry.json`. Open `stylesheets/highlight/style.css` and replace its content with:
 
 ```css
 body {
@@ -30,9 +37,9 @@ body {
 
 This is a plain CSS file. Global stylesheets apply directly to the page — they are not scoped like widget styles — so anything you would write in a normal `<link rel="stylesheet">` works here.
 
-## Step 2: Register the Stylesheet
+## Step 2: Review the Registry Entry
 
-Open `extensions_registry.json` at the root of your repository and add this entry to the `stylesheets` array:
+Open `extensions_registry.json` at the root of your project. `gsds style new` added this entry to the `stylesheets` array. Add a `description` so the entry looks like this:
 
 ```json
 {
@@ -40,19 +47,21 @@ Open `extensions_registry.json` at the root of your repository and add this entr
     {
       "name": "highlight",
       "path": "stylesheets/highlight/style.css",
-      "description": "Adds a visible outline around the page body"
+      "description": "Adds a visible outline around the page body",
+      "placement": "head"
     }
   ]
 }
 ```
 
-The `name` field is the stylesheet's unique identifier within the `stylesheets` array. The `path` points to the file you just created, relative to the repository root.
+The `name` field is the stylesheet's unique identifier within the `stylesheets` array. The `path` points to the stylesheet file, relative to the repository root.
 
 ## Step 3: Push and Publish
 
-Commit and push your changes:
+Run `gsds build` to validate the registry, then commit and push your changes:
 
 ```bash
+gsds build
 git add extensions_registry.json stylesheets/highlight/style.css
 git commit -m "Add highlight stylesheet"
 git push
@@ -79,6 +88,7 @@ A stylesheet with no `rules` loads everywhere. To restrict it, add a `rules` arr
       "name": "highlight",
       "path": "stylesheets/highlight/style.css",
       "description": "Adds a visible outline, homepage only",
+      "placement": "head",
       "rules": [
         { "field": "page", "operator": "eq", "value": "homepage" }
       ]
@@ -93,7 +103,7 @@ For the full list of targeting fields and operators, see [Page Targeting](page-t
 
 ## What You Built
 
-You created a CSS file, registered it in the platform, pushed it to production, and verified it applies to community pages. You then added a rule to target a specific page. The stylesheet loads via a standard `<link>` tag on every request that matches its rules.
+You scaffolded a stylesheet with the CLI, registered it in the platform, pushed it to production, and verified it applies to community pages. You then added a rule to target a specific page. The stylesheet loads via a standard `<link>` tag on every request that matches its rules.
 
 ## What's Next
 
