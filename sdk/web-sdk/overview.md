@@ -10,7 +10,7 @@ description: >-
 
 The **Community Hub Web SDK** is a JavaScript API exposed on community pages. It lets you search content, manage users, subscribe to topics and categories, and load scripts from custom widgets running in the community frontend. You reach it as `sdk.web` on the `sdk` object your widget's `init(sdk)` receives.
 
-The SDK is **browser-only**: all methods that call the backend or DOM throw if run outside a browser environment.
+The SDK is **browser-only**.
 
 ## Availability
 

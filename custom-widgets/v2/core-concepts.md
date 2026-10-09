@@ -122,7 +122,7 @@ When a widget appears on a page, the platform runs through this sequence:
 ```mermaid
 flowchart TD
     A["Custom element connects"] --> B["Shadow DOM created"]
-    B --> C["Design tokens injected"]
+    B --> C["Design tokens inherited from the page"]
     C --> D["sdk object created"]
     D --> E["Scripts executed"]
     E --> F["init(sdk) called"]
@@ -182,7 +182,7 @@ sdk.on('propsChanged', (newProps) => {
 
 ## Design Tokens
 
-Design tokens are CSS custom properties that carry a community's branding — colors, fonts, and other theme values — into a widget's styles. The platform injects them into the widget's shadow DOM automatically, so a widget can reflect each community's look without hardcoding colors or fonts:
+Design tokens are CSS custom properties that carry a community's branding — colors, fonts, and other theme values — into a widget's styles. They are inherited from the page — CSS custom properties pass through the shadow boundary — so a widget can reflect each community's look without hardcoding colors or fonts:
 
 ```css
 h1 {
@@ -196,14 +196,14 @@ See [Use Design Tokens](design-tokens) for usage patterns and [Design Tokens Ref
 
 ## Custom Events
 
-Widgets can emit and listen for custom events to communicate with the platform or other widgets:
+`sdk.emit` and `sdk.on` form an event bus within a single widget: an event emitted with `sdk.emit` reaches only listeners registered with `sdk.on` on the same widget.
 
 ```javascript
-sdk.emit('taskCompleted', { taskId: 42 })
-
 const unsubscribe = sdk.on('taskCompleted', (data) => {
   console.log('Task completed:', data)
 })
+
+sdk.emit('taskCompleted', { taskId: 42 })
 ```
 
 The `on()` method returns an unsubscribe function, called when the listener is no longer needed.
@@ -228,9 +228,9 @@ The `on()` method returns an unsubscribe function, called when the listener is n
 
 ### Cleanup
 
-* The `destroy` event exists because the platform does not tear down a widget's framework state or event listeners on removal — that responsibility falls to the widget itself.
-* The `on()` return value is an unsubscribe function for exactly this reason: it lets a widget stop listening to SDK events once they are no longer needed.
-* Timers and pending requests started during a widget's lifetime need to be cleared in the same `destroy` handler, since nothing else stops them.
+* Listeners registered with `sdk.on` are removed automatically when the widget is destroyed. DOM listeners, timers, and intervals the widget created are not — clean those up in a `destroy` handler, along with framework state.
+* The `on()` return value is an unsubscribe function, which lets a widget stop listening to an SDK event before it is destroyed.
+* Pending requests started during a widget's lifetime need to be cancelled in the same `destroy` handler, since nothing else stops them.
 
 ## Next Steps
 

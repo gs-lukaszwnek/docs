@@ -523,7 +523,7 @@ Replace the content of `src/widget.css` with:
 }
 ```
 
-Notice that the styles reference design tokens with `var()` — the platform injects your community's branding values for colors and fonts automatically. The second argument to each `var()` is a fallback so the widget looks reasonable outside a community context.
+Notice that the styles reference design tokens with `var()` — your community's branding values for colors and fonts are inherited from the page automatically. The second argument to each `var()` is a fallback so the widget looks reasonable outside a community context.
 
 ## Step 3: Render the Card
 
@@ -1837,7 +1837,7 @@ When a widget appears on a page, the platform runs through this sequence:
 ```mermaid
 flowchart TD
     A["Custom element connects"] --> B["Shadow DOM created"]
-    B --> C["Design tokens injected"]
+    B --> C["Design tokens inherited from the page"]
     C --> D["sdk object created"]
     D --> E["Scripts executed"]
     E --> F["init(sdk) called"]
@@ -1897,7 +1897,7 @@ sdk.on('propsChanged', (newProps) => {
 
 ## Design Tokens
 
-Design tokens are CSS custom properties that carry a community's branding — colors, fonts, and other theme values — into a widget's styles. The platform injects them into the widget's shadow DOM automatically, so a widget can reflect each community's look without hardcoding colors or fonts:
+Design tokens are CSS custom properties that carry a community's branding — colors, fonts, and other theme values — into a widget's styles. They are inherited from the page — CSS custom properties pass through the shadow boundary — so a widget can reflect each community's look without hardcoding colors or fonts:
 
 ```css
 h1 {
@@ -1911,14 +1911,14 @@ See [Use Design Tokens](design-tokens) for usage patterns and [Design Tokens Ref
 
 ## Custom Events
 
-Widgets can emit and listen for custom events to communicate with the platform or other widgets:
+`sdk.emit` and `sdk.on` form an event bus within a single widget: an event emitted with `sdk.emit` reaches only listeners registered with `sdk.on` on the same widget.
 
 ```javascript
-sdk.emit('taskCompleted', { taskId: 42 })
-
 const unsubscribe = sdk.on('taskCompleted', (data) => {
   console.log('Task completed:', data)
 })
+
+sdk.emit('taskCompleted', { taskId: 42 })
 ```
 
 The `on()` method returns an unsubscribe function, called when the listener is no longer needed.
@@ -1943,9 +1943,9 @@ The `on()` method returns an unsubscribe function, called when the listener is n
 
 ### Cleanup
 
-* The `destroy` event exists because the platform does not tear down a widget's framework state or event listeners on removal — that responsibility falls to the widget itself.
-* The `on()` return value is an unsubscribe function for exactly this reason: it lets a widget stop listening to SDK events once they are no longer needed.
-* Timers and pending requests started during a widget's lifetime need to be cleared in the same `destroy` handler, since nothing else stops them.
+* Listeners registered with `sdk.on` are removed automatically when the widget is destroyed. DOM listeners, timers, and intervals the widget created are not — clean those up in a `destroy` handler, along with framework state.
+* The `on()` return value is an unsubscribe function, which lets a widget stop listening to an SDK event before it is destroyed.
+* Pending requests started during a widget's lifetime need to be cancelled in the same `destroy` handler, since nothing else stops them.
 
 ## Next Steps
 
@@ -3063,7 +3063,7 @@ To style your widget with a community's branding — colors, fonts, and other th
 
 ## Use Tokens in CSS
 
-Design tokens are CSS custom properties that reflect the community's branding (colors, fonts, etc.). The platform injects them into your Shadow DOM automatically, so you can use them directly in your widget's styles:
+Design tokens are CSS custom properties that reflect the community's branding (colors, fonts, etc.). They are inherited from the page — CSS custom properties pass through the Shadow DOM boundary — so you can use them directly in your widget's styles:
 
 ```css
 h1 {
@@ -5573,7 +5573,7 @@ description: >-
 
 # Design Tokens Reference
 
-The platform injects design tokens into your widget's Shadow DOM as CSS custom properties. Every token below is available on every community.
+Design tokens are CSS custom properties inherited from the page into your widget's Shadow DOM. Every token below is available on every community.
 
 Reference a token with `var()` and always give it a fallback. The fallback applies whenever the property is not set — before a community's branding has loaded, or outside a community context altogether. Use the token's `Default value` as that fallback, except for the `--font-family-*` tokens: their defaults name a single family, so append a generic family after it (`var(--font-family-sans, Roboto, sans-serif)`).
 
@@ -9965,7 +9965,7 @@ Your widget's `init(sdk)` function receives one `sdk` object. It is the single e
 
 | | What it is | How you access it | What it's for |
 |---|---|---|---|
-| **[Widget Runtime Reference](/sdk/runtime-reference)** | The lifecycle contract — see [Widget Runtime](/custom-widgets/v2/core-concepts) for how it works | Directly on `sdk`, for example `sdk.getContainer()` and `sdk.props` | Gives your widget its shadow root, current props, design tokens, and events |
+| **[Widget Runtime Reference](/sdk/runtime-reference)** | The lifecycle contract — see [Widget Runtime](/custom-widgets/v2/core-concepts) for how it works | Directly on `sdk`, for example `sdk.getContainer()` and `sdk.getProps()` | Gives your widget its shadow root, current props, design tokens, and events |
 | **[Connectors SDK](/sdk/connectors-sdk/overview)** | A backend proxy client, shared by every widget on the page | `sdk.connectors` | Call [Connectors](/connectors/) to reach external APIs without exposing credentials in the browser |
 | **[Web SDK](/sdk/web-sdk/overview)** | The community-platform client | `sdk.web` — `undefined` on host pages that publish no Web SDK | Search content, manage users and subscriptions, and interact with the DOM on community pages |
 
@@ -10034,15 +10034,15 @@ This page documents the `sdk` object the platform passes to your widget's `init(
 | -------------------- | ---------------- | ---------------------------------------------- |
 | `getContainer()`     | `ShadowRoot`     | Returns the widget's shadow root — same reference as `root`/`shadowRoot`, recommended mount target for framework apps (React, Vue, etc.) |
 | `getProps<T>()`      | `T`              | Current widget props (from configuration)      |
-| `setProps(props)`    | `void`           | Update props (emits `propsChanged`)            |
+| `setProps(props)`    | `void`           | Merges `props` into the current props (keys are never removed) and emits `propsChanged`. Local to this widget instance; not persisted.|
 | `getVersionInfo()`   | `VersionInfo`    | `{ version, gitSha, buildTime }`               |
 | `getDesignTokens()`  | `Record<string, string \| null>` | Current theme design tokens, keyed by token name without the leading `--` (e.g. `config--main-color-brand` for `--config--main-color-brand`). Returns a copy |
-| `whenReady()`        | `Promise<SDK>`   | Resolves once initialization completes         |
+| `whenReady()`        | `Promise<SDK>`   | Resolves when the widget is ready to use. Await it as the first statement of `init`.|
 | `$(selector)`        | `Element \| null` | Shorthand for `shadowRoot.querySelector(selector)` |
 | `$$(selector)`       | `Element[]`      | Shorthand for `shadowRoot.querySelectorAll(selector)` — returns an array, not a NodeList |
 | `on(event, handler)` | `() => void`     | Subscribe to an event (returns unsubscribe fn) |
 | `off(event, handler)`| `void`           | Unsubscribe from an event                      |
-| `emit(event, data?)` | `void`           | Emit a custom event                            |
+| `emit(event, data?)` | `void`           | Emit an event to this widget's own `on()` listeners|
 
 ## Built-in Events
 
@@ -10103,6 +10103,7 @@ Constructing `new window.WidgetServiceSDK()` still works, but is no longer recom
 |--------|-------|
 | `new window.WidgetServiceSDK()` then `sdk.connectors.execute(...)` | `sdk.connectors.execute(...)` |
 | Constructor `headers` option | Per-request `headers` on `execute`, or `sdk.connectors.configure({ headers })` (applies to every widget on the page) |
+| Constructor `csrfToken` option | `sdk.connectors.configure({ csrfToken })` (page-wide; normally read from the page automatically) |
 | Constructor `timeout` option | `sdk.connectors.configure({ timeout })` or `sdk.connectors.setDefaultTimeout(ms)` (applies to every widget on the page) |
 
 ## Next Steps
@@ -10150,7 +10151,7 @@ sdk.connectors.configure({
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `csrfToken` | `string` | Read from the page | CSRF token sent with requests; normally read from the page automatically |
-| `headers` | `Record<string, string>` | `{}` | Headers included with every request |
+| `headers` | `Record<string, string>` | `Content-Type` and `Accept` set to `application/json`; `configure` merges into them | Headers included with every request. Per-request `headers` on `execute` are merged on top for that call |
 | `timeout` | `number` | `30000` | Request timeout in milliseconds |
 
 ::: warning Applies to every widget on the page
@@ -10194,7 +10195,7 @@ const result = await sdk.connectors.execute({
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
 | `permalink` | `string` | Yes | — | The connector's unique permalink identifier |
-| `method` | `"GET" \| "POST" \| "PUT" \| "PATCH" \| "DELETE" \| "HEAD" \| "OPTIONS"` | Yes | — | HTTP method |
+| `method` | `"GET" \| "POST" \| "PUT" \| "PATCH" \| "DELETE" \| "HEAD" \| "OPTIONS"` | Yes | — | HTTP method. Must match the method configured on the connector; a mismatch is rejected with HTTP 400 (METHOD\_NOT\_ALLOWED) |
 | `payload` | `Record<string, JsonValue>` | No | `undefined` | The request body, as a plain JSON object. Pass it via `payload` (not `body`). Only sent for `POST`, `PUT`, `PATCH` methods |
 | `queryParams` | `Record<string, string>` | No | `{}` | Query parameters appended to the request URL |
 | `pathParams` | `Record<string, string \| number>` | No | `{}` | Values substituted into {{ pathParams.X }} URL template references on the connector. See [Dynamic URL Path Segments](/connectors/dynamic-url-paths) |
@@ -10206,7 +10207,7 @@ const result = await sdk.connectors.execute({
 The request body goes in the `payload` option as a plain JSON object. `body` is not a recognized option — and `execute()` silently ignores any option it does not recognize, so a call using `body` sends an empty request body.
 :::
 
-**Returns** `Promise<Record<string, JsonValue>>`
+**Returns** `Promise` resolving to the parsed JSON response body (an object or an array). Rejects if the response body is not JSON, including an empty body.
 
 ### Path parameter validation
 
@@ -10377,15 +10378,14 @@ export async function init(sdk) {
 
 ## Handling errors with a styled fallback
 
-Wrap `execute` calls in `try`/`catch` and render a small, styled fallback using design tokens so the widget degrades gracefully instead of showing an empty container. This example also uses the widget runtime (`sdk.whenReady()`, `sdk.getContainer()`) alongside `sdk.connectors`:
+Wrap `execute` calls in `try`/`catch` and render a small, styled fallback using design tokens so the widget degrades gracefully instead of showing an empty container. This example also uses the widget runtime (`sdk.whenReady()`, `sdk.$()`) alongside `sdk.connectors`, and assumes your widget HTML contains `<div class="status">Loading…</div>`:
 
 ```javascript
 export async function init(sdk) {
   await sdk.whenReady()
 
-  const container = sdk.getContainer()
-  container.innerHTML = `<div class="status">Loading…</div>`
   const status = sdk.$('.status')
+  status.textContent = "Loading…"
 
   try {
     const data = await sdk.connectors.execute({
@@ -10394,7 +10394,7 @@ export async function init(sdk) {
       queryParams: { q: "Warsaw" }
     })
 
-    status.textContent = `${data.city}: ${data.temperature}°C`
+    status.textContent = `${data.location.name}: ${data.current.temp_c}°C`
   } catch (error) {
     status.textContent = "Couldn't load weather data right now."
     status.style.color = "var(--color-content-subtle, #4F5663)"
@@ -10426,7 +10426,7 @@ description: >-
 
 The **Community Hub Web SDK** is a JavaScript API exposed on community pages. It lets you search content, manage users, subscribe to topics and categories, and load scripts from custom widgets running in the community frontend. You reach it as `sdk.web` on the `sdk` object your widget's `init(sdk)` receives.
 
-The SDK is **browser-only**: all methods that call the backend or DOM throw if run outside a browser environment.
+The SDK is **browser-only**.
 
 ## Availability
 
@@ -10544,7 +10544,7 @@ await idea.like()  // uses current logged-in user
 
 ### Content instance methods
 
-When created **with** a `privateId`, an instance supports:
+An instance supports these methods. `like`, `unlike`, `vote` and `unvote` need the instance to be created **with** a `privateId`:
 
 | Method | Description |
 |--------|-------------|
@@ -10552,8 +10552,8 @@ When created **with** a `privateId`, an instance supports:
 | `unlike(unlikedBy?)` | Unlike the topic. |
 | `vote(votedBy?)` | Vote (e.g. for ideas). |
 | `unvote(unvotedBy?)` | Remove vote. |
-| `likeReply(replyId, likedBy?)` | Like a reply. |
-| `unlikeReply(replyId, unlikedBy?)` | Unlike a reply. |
+| `likeReply(replyId, likedBy?)` | Like a reply. No `privateId` needed, only a logged-in user. |
+| `unlikeReply(replyId, unlikedBy?)` | Unlike a reply. No `privateId` needed, only a logged-in user. |
 | `search(query, options?)` | Search content of this type only. |
 
 All of these require a **browser environment** and, where applicable, a **logged-in user** (or an explicit user ID).
@@ -10574,8 +10574,6 @@ const results = await sdk.web.Content.search('help with login', {
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `query` | `string` | — | Search query (required). Must be a non-empty string; an empty string is rejected. |
-| `contentType` | `string \| string[]` | — | Filter by type: `'idea'`, `'ideation'`, `'article'`, `'question'`, `'discussion'`, `'conversation'`, `'event'`, `'productUpdate'`. |
 | `limit` | `number` | `30` | Max results per page. |
 | `page` | `number` | `0` | Page index (0-based). |
 | `fetchMetadata` | `boolean` | `true` | When `true`, enriches results with author, engagement, and topic metadata from the backend. |
@@ -10583,6 +10581,10 @@ const results = await sdk.web.Content.search('help with login', {
 | `categoryIds` | `number[]` | — | Filter by category/forum IDs. |
 | `kbCategoryName` | `string` | — | Filter by knowledge base category name. |
 | `productAreaName` | `string` | — | Filter by product area name. |
+| `contentType` | `string[]` | all types | Content types to include, e.g. `['idea', 'question']`. On a typed instance (`Content.Idea().search`) it overrides the instance's type. |
+| `facetFilters` | `string[][]` | — | Raw facet filters, for example `[['categories.lvl1:Ideas > Feature Requests']]` for a sub-category. Values in one inner array are ORed; the inner arrays are ANDed. |
+
+The query is the first argument (a non-empty string; an empty string is rejected).
 
 Search has no sort option and no date filter. Results are returned in relevance order, so none of the options above can list the newest, most viewed, most replied, or most liked content. The filters only narrow the set of results.
 
@@ -10602,7 +10604,7 @@ Access the current session context — who is viewing the page and their communi
 
 Fetch the current user. Always returns a `User` object — a guest resolves to the **guest projection** (`userId: null`, `username: "guest"`), never `null`. This replaces reading `inSidedData.user`.
 
-**Browser-only.** Takes no parameters. For a signed-in visitor `badges` and `profileFields` are always present and `rank` is present when the user has one; the guest result has no `profileFields` or `rank`. No private account data (email, PM counts, login source) is ever returned. The response does include the viewer's own private profile fields, which any script on the page can read; see [User Context](user-context#context-current-viewer).
+**Browser-only.** Accepts an optional `{ include }` that the backend currently ignores — call it with no arguments. For a signed-in visitor `badges` and `profileFields` are always present and `rank` is present when the user has one; the guest result has no `profileFields` or `rank`. No private account data (email, PM counts, login source) is ever returned. The response does include the viewer's own private profile fields, which any script on the page can read; see [User Context](user-context#context-current-viewer).
 
 ```javascript
 const me = await sdk.web.Context.User()
@@ -10681,7 +10683,7 @@ List users that hold one or more roles. `role` is a single role ID or an array (
 
 ```javascript
 const { items } = await sdk.web.User.getByRole(7)
-const { items } = await sdk.web.User.getByRole([7, 9], { size: 50 })
+const { items: multiRole } = await sdk.web.User.getByRole([7, 9], { size: 50 })
 ```
 
 ### User object shape
@@ -10692,7 +10694,7 @@ All User methods except `search()` return the unified `User` model; `search()` r
 
 ## Subscription Methods
 
-All subscription methods are **browser-only** and require valid identifiers.
+All subscription methods require valid identifiers.
 
 ### Topics
 
@@ -10738,6 +10740,7 @@ Common cases:
 | Scenario | Cause |
 |----------|-------|
 | "can only be called in a browser environment" | Method was run in Node or an environment without `window`. |
+| "Search can only be used in browser environment" | Content search was run outside a browser. |
 | "Search query is required" / "User IDs array is required" | Missing or invalid arguments. |
 | "privateId is required for this operation" | Content action (like, vote, etc.) was called on an instance created without a private ID. |
 | "User must be logged in or provide a userId" | Like/vote/unvote used without a logged-in user or explicit ID. |
@@ -10785,7 +10788,7 @@ Fetches the current user for the active session. This is the direct replacement 
 * For an unauthenticated (guest) visitor, resolves to the **guest projection** — a `User` object with `userId: null` and `username: "guest"`. It is **never `null`**; branch on `userId` to tell guest from member.
 * Throws if called outside a browser environment or if the network request fails.
 
-Takes no parameters. For a signed-in visitor, `badges` and `profileFields` are always present (an empty array when there is nothing to show) and `rank` is present when the user has one. The guest result has `badges: []` and no `profileFields` or `rank`; see [Guest Handling](#guest-handling).
+Accepts an optional `{ include }` that the backend currently ignores — call it with no arguments. For a signed-in visitor, `badges` and `profileFields` are always present (an empty array when there is nothing to show) and `rank` is present when the user has one. The guest result has `badges: []` and no `profileFields` or `rank`; see [Guest Handling](#guest-handling).
 
 ::: warning Private profile fields are included
 `Context.User()` returns the signed-in member's own profile fields, including the ones set to **Private** (`visibility: 2`). Private keeps a field from other members. It does not keep it from scripts running on the community page (analytics, tag managers, chat tools, other widgets), which can read it through the SDK. Do not send `profileFields` to external services or logs, and filter on `visibility === 1` when you need only public values. `User.getById()` called with the viewer's own ID returns public fields only.
@@ -10882,16 +10885,20 @@ List and filter community members with pagination, sorting, and filtering. Retur
 | `sort` | `UserSortField` | `'userId'` | Sort field. |
 | `order` | `'asc' \| 'desc'` | `'desc'` | Sort direction. |
 
+::: warning Not implemented
+The typed options `customRoles`, `rank`, `badges` and `groups` are not implemented. The backend rejects them with HTTP 400 and the whole request fails.
+:::
+
 Role, badge, and profile-field IDs used in the filters and examples below are **specific to each community**. Find your community's values in its admin settings (the Roles, Badges, and Profile Fields sections) instead of reusing the sample IDs.
 
 **`DateFilter`** — ISO-8601 datetime, ISO-8601 duration relative to now (e.g. `'P3D'` = last 72 h), or `{ from?, to? }` range:
 
 ```javascript
 // Users who joined in the last 7 days
-const { items } = await sdk.web.User.list({ joinDate: 'P7D' })
+const { items: recent } = await sdk.web.User.list({ joinDate: 'P7D' })
 
 // Users who joined in a specific range
-const { items } = await sdk.web.User.list({
+const { items: ranged } = await sdk.web.User.list({
   joinDate: { from: '2024-01-01T00:00:00Z', to: '2024-12-31T23:59:59Z' }
 })
 ```
@@ -10933,10 +10940,11 @@ export async function init(sdk) {
   if (!sdk.web) return
 
   const size = 100
+  const maxPage = Math.floor(10000 / size)
   let page = 1
   let total = Infinity
 
-  while ((page - 1) * size < total) {
+  while (page <= maxPage && (page - 1) * size < total) {
     const result = await sdk.web.User.list({ page, size })
     total = result.totalItems
     result.items.forEach((u) => console.log(u.userId, u.username))
@@ -10944,6 +10952,8 @@ export async function init(sdk) {
   }
 }
 ```
+
+Only the first 10,000 matches can be paged: `page × size` must stay at or below 10,000, and beyond that the backend returns the last reachable page again.
 
 ### `User.getRecentlyActive(limit?)`
 
@@ -10976,7 +10986,7 @@ List users whose main role is one of the specified roles. Custom roles are not m
 const { totalItems, items } = await sdk.web.User.getByRole(7, { size: 50 })
 
 // Users with any of these roles
-const { items } = await sdk.web.User.getByRole([7, 9])
+const { items: anyRole } = await sdk.web.User.getByRole([7, 9])
 ```
 
 ### `User.search(query)`
@@ -10991,19 +11001,19 @@ Search users by a query string. Returns a reduced field set optimized for mentio
 |---|---|---|
 | `query` | `string` | Non-empty search query |
 
-**`UserSearchResult` object shape:**
+**`UserSearchResult` object shape:** all fields are optional; only keys the row carries are present.
 
 | Field | Type | Notes |
 |---|---|---|
-| `userId` | `number` | Canonical user ID. |
-| `username` | `string` | Display username. |
-| `profileUrl` | `string \| null` | Absolute URL to the profile page. |
-| `avatar` | `string` | Avatar URL, or `""` when none. |
-| `userTitle` | `string` | Display title. |
-| `reputation` | `number \| null` | Reputation level, not the raw points. Omitted when no level is available for the user. |
-| `isBanned` | `boolean` | `true` if the user holds the banned role. |
-| `badges` | `Badge[]` | Hydrated badges, **without `id`**. |
-| `rank` | `Rank \| null` | Hydrated rank, **without `id`**. |
+| `userId` (optional) | `number` | Canonical user ID. |
+| `username` (optional) | `string` | Display username. |
+| `profileUrl` (optional) | `string \| null` | Absolute URL to the profile page. |
+| `avatar` (optional) | `string` | Avatar URL, or `""` when none. |
+| `userTitle` (optional) | `string` | Display title. |
+| `reputation` (optional) | `number \| null` | Reputation level, not the raw points. Omitted when no level is available for the user. |
+| `isBanned` (optional) | `boolean` | `true` if the user holds the banned role. |
+| `badges` (optional) | `Badge[]` | Hydrated badges, **without `id`**. |
+| `rank` (optional) | `Rank \| null` | Hydrated rank, **without `id`**. |
 
 ```javascript
 const results = await sdk.web.User.search('jane')
@@ -11221,7 +11231,7 @@ Common error conditions:
 | HTTP 5xx | A server error occurred. Retry after a brief delay. |
 | Rejected call (private community) | Unauthenticated requests are redirected to a login page instead of returning data; catch it and treat as "not signed in." |
 
-The SDK surfaces these as a rejected promise (a thrown `Error`), **not** as a structured status code you can switch on — the "Scenario" column describes the underlying cause, not a machine-readable field. Branch on whether the call rejected, and inspect `err.message` for detail; there is no reliable `err.status` to implement per-code handling.
+The SDK surfaces these as a rejected promise (a thrown `Error`). For an HTTP error response, `err.status` carries the status code — except from `User.search()`, whose message carries only the status text (`Failed to search users: <statusText>`). Network failures and the private-community redirect have no `err.status`; inspect `err.message` for detail.
 
 ***
 
@@ -11239,7 +11249,7 @@ QUICK REFERENCE — user context:
 * For signed-in users badges and profileFields are always present on Context.User() and on every User lookup except search(). The guest result has badges: \[] and no profileFields, rank, role, profileUrl or date fields, so check me.userId === null before reading them. rank is present only when the user has one; test rank, not rankId.
 * profileFields lists only the fields stored for that user and visible to the viewer, not every field the community defines, so look entries up by id. A value is exactly as stored: an empty text field is "", an unset select, check or date field is null.
 * Timestamps (joinDate, lastActivity, lastVisit) are UTC ISO-8601 strings with a +00:00 offset, for example 2024-03-18T09:30:00+00:00. lastActivity equals joinDate until the user has activity; lastVisit is omitted for users who never visited. profileUrl contains a URL-safe form of the username plus the user id (mod\_99 becomes mod-99); never build it from username.
-* User.getById(id) and User.getUsersById(ids) share one transport and return the identical full User shape. getById resolves null for a missing id; getUsersById silently omits unresolved ids and accepts up to 100 ids.
+* User.getById(id) and User.getUsersById(ids) share one transport and return the same User shape, except getUsersById also adds the deprecated userLevel. getById resolves null for a missing id; getUsersById silently omits unresolved ids and accepts up to 100 ids.
 * User.list(options) returns totalItems plus an items array; defaults are page 1 and size 25, with a max size of 100. getByRole() and getRecentlyActive() are thin wrappers over list(). A guest passing an email-address term to list({ search }) gets HTTP 403; username search works for guests.
 * User.search(query) returns up to 25 users (fixed, no size parameter) with a reduced field set for autocomplete UIs: no profileFields, and rank and badges carry no id. Use list() when you need the full object.
 * userId is canonical; id, name, and url are deprecated aliases of userId, username, and profileUrl. getUsersById also returns a deprecated userLevel alias of reputation. joinDate is an ISO-8601 string, not a Unix timestamp. profileUrl is an absolute URL.

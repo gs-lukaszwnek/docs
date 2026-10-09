@@ -73,7 +73,7 @@ Replace the content of `src/widget.css` with:
 }
 ```
 
-Notice that the styles reference design tokens with `var()` — the platform injects your community's branding values for colors and fonts automatically. The second argument to each `var()` is a fallback so the widget looks reasonable outside a community context.
+Notice that the styles reference design tokens with `var()` — your community's branding values for colors and fonts are inherited from the page automatically. The second argument to each `var()` is a fallback so the widget looks reasonable outside a community context.
 
 ## Step 3: Render the Card
 

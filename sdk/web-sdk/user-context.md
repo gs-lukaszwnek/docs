@@ -30,7 +30,7 @@ Fetches the current user for the active session. This is the direct replacement 
 * For an unauthenticated (guest) visitor, resolves to the **guest projection** — a `User` object with `userId: null` and `username: "guest"`. It is **never `null`**; branch on `userId` to tell guest from member.
 * Throws if called outside a browser environment or if the network request fails.
 
-Takes no parameters. For a signed-in visitor, `badges` and `profileFields` are always present (an empty array when there is nothing to show) and `rank` is present when the user has one. The guest result has `badges: []` and no `profileFields` or `rank`; see [Guest Handling](#guest-handling).
+Accepts an optional `{ include }` that the backend currently ignores — call it with no arguments. For a signed-in visitor, `badges` and `profileFields` are always present (an empty array when there is nothing to show) and `rank` is present when the user has one. The guest result has `badges: []` and no `profileFields` or `rank`; see [Guest Handling](#guest-handling).
 
 ::: warning Private profile fields are included
 `Context.User()` returns the signed-in member's own profile fields, including the ones set to **Private** (`visibility: 2`). Private keeps a field from other members. It does not keep it from scripts running on the community page (analytics, tag managers, chat tools, other widgets), which can read it through the SDK. Do not send `profileFields` to external services or logs, and filter on `visibility === 1` when you need only public values. `User.getById()` called with the viewer's own ID returns public fields only.
@@ -127,16 +127,20 @@ List and filter community members with pagination, sorting, and filtering. Retur
 | `sort` | `UserSortField` | `'userId'` | Sort field. |
 | `order` | `'asc' \| 'desc'` | `'desc'` | Sort direction. |
 
+::: warning Not implemented
+The typed options `customRoles`, `rank`, `badges` and `groups` are not implemented. The backend rejects them with HTTP 400 and the whole request fails.
+:::
+
 Role, badge, and profile-field IDs used in the filters and examples below are **specific to each community**. Find your community's values in its admin settings (the Roles, Badges, and Profile Fields sections) instead of reusing the sample IDs.
 
 **`DateFilter`** — ISO-8601 datetime, ISO-8601 duration relative to now (e.g. `'P3D'` = last 72 h), or `{ from?, to? }` range:
 
 ```javascript
 // Users who joined in the last 7 days
-const { items } = await sdk.web.User.list({ joinDate: 'P7D' })
+const { items: recent } = await sdk.web.User.list({ joinDate: 'P7D' })
 
 // Users who joined in a specific range
-const { items } = await sdk.web.User.list({
+const { items: ranged } = await sdk.web.User.list({
   joinDate: { from: '2024-01-01T00:00:00Z', to: '2024-12-31T23:59:59Z' }
 })
 ```
@@ -178,10 +182,11 @@ export async function init(sdk) {
   if (!sdk.web) return
 
   const size = 100
+  const maxPage = Math.floor(10000 / size)
   let page = 1
   let total = Infinity
 
-  while ((page - 1) * size < total) {
+  while (page <= maxPage && (page - 1) * size < total) {
     const result = await sdk.web.User.list({ page, size })
     total = result.totalItems
     result.items.forEach((u) => console.log(u.userId, u.username))
@@ -189,6 +194,8 @@ export async function init(sdk) {
   }
 }
 ```
+
+Only the first 10,000 matches can be paged: `page × size` must stay at or below 10,000, and beyond that the backend returns the last reachable page again.
 
 ### `User.getRecentlyActive(limit?)`
 
@@ -221,7 +228,7 @@ List users whose main role is one of the specified roles. Custom roles are not m
 const { totalItems, items } = await sdk.web.User.getByRole(7, { size: 50 })
 
 // Users with any of these roles
-const { items } = await sdk.web.User.getByRole([7, 9])
+const { items: anyRole } = await sdk.web.User.getByRole([7, 9])
 ```
 
 ### `User.search(query)`
@@ -236,19 +243,19 @@ Search users by a query string. Returns a reduced field set optimized for mentio
 |---|---|---|
 | `query` | `string` | Non-empty search query |
 
-**`UserSearchResult` object shape:**
+**`UserSearchResult` object shape:** all fields are optional; only keys the row carries are present.
 
 | Field | Type | Notes |
 |---|---|---|
-| `userId` | `number` | Canonical user ID. |
-| `username` | `string` | Display username. |
-| `profileUrl` | `string \| null` | Absolute URL to the profile page. |
-| `avatar` | `string` | Avatar URL, or `""` when none. |
-| `userTitle` | `string` | Display title. |
-| `reputation` | `number \| null` | Reputation level, not the raw points. Omitted when no level is available for the user. |
-| `isBanned` | `boolean` | `true` if the user holds the banned role. |
-| `badges` | `Badge[]` | Hydrated badges, **without `id`**. |
-| `rank` | `Rank \| null` | Hydrated rank, **without `id`**. |
+| `userId` (optional) | `number` | Canonical user ID. |
+| `username` (optional) | `string` | Display username. |
+| `profileUrl` (optional) | `string \| null` | Absolute URL to the profile page. |
+| `avatar` (optional) | `string` | Avatar URL, or `""` when none. |
+| `userTitle` (optional) | `string` | Display title. |
+| `reputation` (optional) | `number \| null` | Reputation level, not the raw points. Omitted when no level is available for the user. |
+| `isBanned` (optional) | `boolean` | `true` if the user holds the banned role. |
+| `badges` (optional) | `Badge[]` | Hydrated badges, **without `id`**. |
+| `rank` (optional) | `Rank \| null` | Hydrated rank, **without `id`**. |
 
 ```javascript
 const results = await sdk.web.User.search('jane')
@@ -466,7 +473,7 @@ Common error conditions:
 | HTTP 5xx | A server error occurred. Retry after a brief delay. |
 | Rejected call (private community) | Unauthenticated requests are redirected to a login page instead of returning data; catch it and treat as "not signed in." |
 
-The SDK surfaces these as a rejected promise (a thrown `Error`), **not** as a structured status code you can switch on — the "Scenario" column describes the underlying cause, not a machine-readable field. Branch on whether the call rejected, and inspect `err.message` for detail; there is no reliable `err.status` to implement per-code handling.
+The SDK surfaces these as a rejected promise (a thrown `Error`). For an HTTP error response, `err.status` carries the status code — except from `User.search()`, whose message carries only the status text (`Failed to search users: <statusText>`). Network failures and the private-community redirect have no `err.status`; inspect `err.message` for detail.
 
 ***
 
@@ -484,7 +491,7 @@ QUICK REFERENCE — user context:
 * For signed-in users badges and profileFields are always present on Context.User() and on every User lookup except search(). The guest result has badges: \[] and no profileFields, rank, role, profileUrl or date fields, so check me.userId === null before reading them. rank is present only when the user has one; test rank, not rankId.
 * profileFields lists only the fields stored for that user and visible to the viewer, not every field the community defines, so look entries up by id. A value is exactly as stored: an empty text field is "", an unset select, check or date field is null.
 * Timestamps (joinDate, lastActivity, lastVisit) are UTC ISO-8601 strings with a +00:00 offset, for example 2024-03-18T09:30:00+00:00. lastActivity equals joinDate until the user has activity; lastVisit is omitted for users who never visited. profileUrl contains a URL-safe form of the username plus the user id (mod\_99 becomes mod-99); never build it from username.
-* User.getById(id) and User.getUsersById(ids) share one transport and return the identical full User shape. getById resolves null for a missing id; getUsersById silently omits unresolved ids and accepts up to 100 ids.
+* User.getById(id) and User.getUsersById(ids) share one transport and return the same User shape, except getUsersById also adds the deprecated userLevel. getById resolves null for a missing id; getUsersById silently omits unresolved ids and accepts up to 100 ids.
 * User.list(options) returns totalItems plus an items array; defaults are page 1 and size 25, with a max size of 100. getByRole() and getRecentlyActive() are thin wrappers over list(). A guest passing an email-address term to list({ search }) gets HTTP 403; username search works for guests.
 * User.search(query) returns up to 25 users (fixed, no size parameter) with a reduced field set for autocomplete UIs: no profileFields, and rank and badges carry no id. Use list() when you need the full object.
 * userId is canonical; id, name, and url are deprecated aliases of userId, username, and profileUrl. getUsersById also returns a deprecated userLevel alias of reputation. joinDate is an ISO-8601 string, not a Unix timestamp. profileUrl is an absolute URL.

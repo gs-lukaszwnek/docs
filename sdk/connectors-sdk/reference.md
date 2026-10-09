@@ -35,7 +35,7 @@ sdk.connectors.configure({
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `csrfToken` | `string` | Read from the page | CSRF token sent with requests; normally read from the page automatically |
-| `headers` | `Record<string, string>` | `{}` | Headers included with every request |
+| `headers` | `Record<string, string>` | `Content-Type` and `Accept` set to `application/json`; `configure` merges into them | Headers included with every request. Per-request `headers` on `execute` are merged on top for that call |
 | `timeout` | `number` | `30000` | Request timeout in milliseconds |
 
 ::: warning Applies to every widget on the page
@@ -79,7 +79,7 @@ const result = await sdk.connectors.execute({
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
 | `permalink` | `string` | Yes | — | The connector's unique permalink identifier |
-| `method` | `"GET" \| "POST" \| "PUT" \| "PATCH" \| "DELETE" \| "HEAD" \| "OPTIONS"` | Yes | — | HTTP method |
+| `method` | `"GET" \| "POST" \| "PUT" \| "PATCH" \| "DELETE" \| "HEAD" \| "OPTIONS"` | Yes | — | HTTP method. Must match the method configured on the connector; a mismatch is rejected with HTTP 400 (METHOD\_NOT\_ALLOWED) |
 | `payload` | `Record<string, JsonValue>` | No | `undefined` | The request body, as a plain JSON object. Pass it via `payload` (not `body`). Only sent for `POST`, `PUT`, `PATCH` methods |
 | `queryParams` | `Record<string, string>` | No | `{}` | Query parameters appended to the request URL |
 | `pathParams` | `Record<string, string \| number>` | No | `{}` | Values substituted into {{ pathParams.X }} URL template references on the connector. See [Dynamic URL Path Segments](/connectors/dynamic-url-paths) |
@@ -91,7 +91,7 @@ const result = await sdk.connectors.execute({
 The request body goes in the `payload` option as a plain JSON object. `body` is not a recognized option — and `execute()` silently ignores any option it does not recognize, so a call using `body` sends an empty request body.
 :::
 
-**Returns** `Promise<Record<string, JsonValue>>`
+**Returns** `Promise` resolving to the parsed JSON response body (an object or an array). Rejects if the response body is not JSON, including an empty body.
 
 ### Path parameter validation
 

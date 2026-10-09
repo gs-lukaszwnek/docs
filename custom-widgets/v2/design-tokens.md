@@ -11,7 +11,7 @@ To style your widget with a community's branding — colors, fonts, and other th
 
 ## Use Tokens in CSS
 
-Design tokens are CSS custom properties that reflect the community's branding (colors, fonts, etc.). The platform injects them into your Shadow DOM automatically, so you can use them directly in your widget's styles:
+Design tokens are CSS custom properties that reflect the community's branding (colors, fonts, etc.). They are inherited from the page — CSS custom properties pass through the Shadow DOM boundary — so you can use them directly in your widget's styles:
 
 ```css
 h1 {

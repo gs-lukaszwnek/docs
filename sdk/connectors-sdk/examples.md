@@ -128,15 +128,14 @@ export async function init(sdk) {
 
 ## Handling errors with a styled fallback
 
-Wrap `execute` calls in `try`/`catch` and render a small, styled fallback using design tokens so the widget degrades gracefully instead of showing an empty container. This example also uses the widget runtime (`sdk.whenReady()`, `sdk.getContainer()`) alongside `sdk.connectors`:
+Wrap `execute` calls in `try`/`catch` and render a small, styled fallback using design tokens so the widget degrades gracefully instead of showing an empty container. This example also uses the widget runtime (`sdk.whenReady()`, `sdk.$()`) alongside `sdk.connectors`, and assumes your widget HTML contains `<div class="status">Loading…</div>`:
 
 ```javascript
 export async function init(sdk) {
   await sdk.whenReady()
 
-  const container = sdk.getContainer()
-  container.innerHTML = `<div class="status">Loading…</div>`
   const status = sdk.$('.status')
+  status.textContent = "Loading…"
 
   try {
     const data = await sdk.connectors.execute({
@@ -145,7 +144,7 @@ export async function init(sdk) {
       queryParams: { q: "Warsaw" }
     })
 
-    status.textContent = `${data.city}: ${data.temperature}°C`
+    status.textContent = `${data.location.name}: ${data.current.temp_c}°C`
   } catch (error) {
     status.textContent = "Couldn't load weather data right now."
     status.style.color = "var(--color-content-subtle, #4F5663)"

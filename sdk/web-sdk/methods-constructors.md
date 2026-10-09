@@ -56,7 +56,7 @@ await idea.like()  // uses current logged-in user
 
 ### Content instance methods
 
-When created **with** a `privateId`, an instance supports:
+An instance supports these methods. `like`, `unlike`, `vote` and `unvote` need the instance to be created **with** a `privateId`:
 
 | Method | Description |
 |--------|-------------|
@@ -64,8 +64,8 @@ When created **with** a `privateId`, an instance supports:
 | `unlike(unlikedBy?)` | Unlike the topic. |
 | `vote(votedBy?)` | Vote (e.g. for ideas). |
 | `unvote(unvotedBy?)` | Remove vote. |
-| `likeReply(replyId, likedBy?)` | Like a reply. |
-| `unlikeReply(replyId, unlikedBy?)` | Unlike a reply. |
+| `likeReply(replyId, likedBy?)` | Like a reply. No `privateId` needed, only a logged-in user. |
+| `unlikeReply(replyId, unlikedBy?)` | Unlike a reply. No `privateId` needed, only a logged-in user. |
 | `search(query, options?)` | Search content of this type only. |
 
 All of these require a **browser environment** and, where applicable, a **logged-in user** (or an explicit user ID).
@@ -86,8 +86,6 @@ const results = await sdk.web.Content.search('help with login', {
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `query` | `string` | — | Search query (required). Must be a non-empty string; an empty string is rejected. |
-| `contentType` | `string \| string[]` | — | Filter by type: `'idea'`, `'ideation'`, `'article'`, `'question'`, `'discussion'`, `'conversation'`, `'event'`, `'productUpdate'`. |
 | `limit` | `number` | `30` | Max results per page. |
 | `page` | `number` | `0` | Page index (0-based). |
 | `fetchMetadata` | `boolean` | `true` | When `true`, enriches results with author, engagement, and topic metadata from the backend. |
@@ -95,6 +93,10 @@ const results = await sdk.web.Content.search('help with login', {
 | `categoryIds` | `number[]` | — | Filter by category/forum IDs. |
 | `kbCategoryName` | `string` | — | Filter by knowledge base category name. |
 | `productAreaName` | `string` | — | Filter by product area name. |
+| `contentType` | `string[]` | all types | Content types to include, e.g. `['idea', 'question']`. On a typed instance (`Content.Idea().search`) it overrides the instance's type. |
+| `facetFilters` | `string[][]` | — | Raw facet filters, for example `[['categories.lvl1:Ideas > Feature Requests']]` for a sub-category. Values in one inner array are ORed; the inner arrays are ANDed. |
+
+The query is the first argument (a non-empty string; an empty string is rejected).
 
 Search has no sort option and no date filter. Results are returned in relevance order, so none of the options above can list the newest, most viewed, most replied, or most liked content. The filters only narrow the set of results.
 
@@ -114,7 +116,7 @@ Access the current session context — who is viewing the page and their communi
 
 Fetch the current user. Always returns a `User` object — a guest resolves to the **guest projection** (`userId: null`, `username: "guest"`), never `null`. This replaces reading `inSidedData.user`.
 
-**Browser-only.** Takes no parameters. For a signed-in visitor `badges` and `profileFields` are always present and `rank` is present when the user has one; the guest result has no `profileFields` or `rank`. No private account data (email, PM counts, login source) is ever returned. The response does include the viewer's own private profile fields, which any script on the page can read; see [User Context](user-context#context-current-viewer).
+**Browser-only.** Accepts an optional `{ include }` that the backend currently ignores — call it with no arguments. For a signed-in visitor `badges` and `profileFields` are always present and `rank` is present when the user has one; the guest result has no `profileFields` or `rank`. No private account data (email, PM counts, login source) is ever returned. The response does include the viewer's own private profile fields, which any script on the page can read; see [User Context](user-context#context-current-viewer).
 
 ```javascript
 const me = await sdk.web.Context.User()
@@ -193,7 +195,7 @@ List users that hold one or more roles. `role` is a single role ID or an array (
 
 ```javascript
 const { items } = await sdk.web.User.getByRole(7)
-const { items } = await sdk.web.User.getByRole([7, 9], { size: 50 })
+const { items: multiRole } = await sdk.web.User.getByRole([7, 9], { size: 50 })
 ```
 
 ### User object shape
@@ -204,7 +206,7 @@ All User methods except `search()` return the unified `User` model; `search()` r
 
 ## Subscription Methods
 
-All subscription methods are **browser-only** and require valid identifiers.
+All subscription methods require valid identifiers.
 
 ### Topics
 
@@ -250,6 +252,7 @@ Common cases:
 | Scenario | Cause |
 |----------|-------|
 | "can only be called in a browser environment" | Method was run in Node or an environment without `window`. |
+| "Search can only be used in browser environment" | Content search was run outside a browser. |
 | "Search query is required" / "User IDs array is required" | Missing or invalid arguments. |
 | "privateId is required for this operation" | Content action (like, vote, etc.) was called on an instance created without a private ID. |
 | "User must be logged in or provide a userId" | Like/vote/unvote used without a logged-in user or explicit ID. |

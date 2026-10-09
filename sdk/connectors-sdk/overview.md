@@ -39,6 +39,7 @@ Constructing `new window.WidgetServiceSDK()` still works, but is no longer recom
 |--------|-------|
 | `new window.WidgetServiceSDK()` then `sdk.connectors.execute(...)` | `sdk.connectors.execute(...)` |
 | Constructor `headers` option | Per-request `headers` on `execute`, or `sdk.connectors.configure({ headers })` (applies to every widget on the page) |
+| Constructor `csrfToken` option | `sdk.connectors.configure({ csrfToken })` (page-wide; normally read from the page automatically) |
 | Constructor `timeout` option | `sdk.connectors.configure({ timeout })` or `sdk.connectors.setDefaultTimeout(ms)` (applies to every widget on the page) |
 
 ## Next Steps

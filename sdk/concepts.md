@@ -13,7 +13,7 @@ Your widget's `init(sdk)` function receives one `sdk` object. It is the single e
 
 | | What it is | How you access it | What it's for |
 |---|---|---|---|
-| **[Widget Runtime Reference](/sdk/runtime-reference)** | The lifecycle contract — see [Widget Runtime](/custom-widgets/v2/core-concepts) for how it works | Directly on `sdk`, for example `sdk.getContainer()` and `sdk.props` | Gives your widget its shadow root, current props, design tokens, and events |
+| **[Widget Runtime Reference](/sdk/runtime-reference)** | The lifecycle contract — see [Widget Runtime](/custom-widgets/v2/core-concepts) for how it works | Directly on `sdk`, for example `sdk.getContainer()` and `sdk.getProps()` | Gives your widget its shadow root, current props, design tokens, and events |
 | **[Connectors SDK](/sdk/connectors-sdk/overview)** | A backend proxy client, shared by every widget on the page | `sdk.connectors` | Call [Connectors](/connectors/) to reach external APIs without exposing credentials in the browser |
 | **[Web SDK](/sdk/web-sdk/overview)** | The community-platform client | `sdk.web` — `undefined` on host pages that publish no Web SDK | Search content, manage users and subscriptions, and interact with the DOM on community pages |
 

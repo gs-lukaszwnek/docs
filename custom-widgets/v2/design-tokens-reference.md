@@ -8,7 +8,7 @@ description: >-
 
 # Design Tokens Reference
 
-The platform injects design tokens into your widget's Shadow DOM as CSS custom properties. Every token below is available on every community.
+Design tokens are CSS custom properties inherited from the page into your widget's Shadow DOM. Every token below is available on every community.
 
 Reference a token with `var()` and always give it a fallback. The fallback applies whenever the property is not set — before a community's branding has loaded, or outside a community context altogether. Use the token's `Default value` as that fallback, except for the `--font-family-*` tokens: their defaults name a single family, so append a generic family after it (`var(--font-family-sans, Roboto, sans-serif)`).
 

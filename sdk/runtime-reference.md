@@ -26,15 +26,15 @@ This page documents the `sdk` object the platform passes to your widget's `init(
 | -------------------- | ---------------- | ---------------------------------------------- |
 | `getContainer()`     | `ShadowRoot`     | Returns the widget's shadow root — same reference as `root`/`shadowRoot`, recommended mount target for framework apps (React, Vue, etc.) |
 | `getProps<T>()`      | `T`              | Current widget props (from configuration)      |
-| `setProps(props)`    | `void`           | Update props (emits `propsChanged`)            |
+| `setProps(props)`    | `void`           | Merges `props` into the current props (keys are never removed) and emits `propsChanged`. Local to this widget instance; not persisted.|
 | `getVersionInfo()`   | `VersionInfo`    | `{ version, gitSha, buildTime }`               |
 | `getDesignTokens()`  | `Record<string, string \| null>` | Current theme design tokens, keyed by token name without the leading `--` (e.g. `config--main-color-brand` for `--config--main-color-brand`). Returns a copy |
-| `whenReady()`        | `Promise<SDK>`   | Resolves once initialization completes         |
+| `whenReady()`        | `Promise<SDK>`   | Resolves when the widget is ready to use. Await it as the first statement of `init`.|
 | `$(selector)`        | `Element \| null` | Shorthand for `shadowRoot.querySelector(selector)` |
 | `$$(selector)`       | `Element[]`      | Shorthand for `shadowRoot.querySelectorAll(selector)` — returns an array, not a NodeList |
 | `on(event, handler)` | `() => void`     | Subscribe to an event (returns unsubscribe fn) |
 | `off(event, handler)`| `void`           | Unsubscribe from an event                      |
-| `emit(event, data?)` | `void`           | Emit a custom event                            |
+| `emit(event, data?)` | `void`           | Emit an event to this widget's own `on()` listeners|
 
 ## Built-in Events
 
