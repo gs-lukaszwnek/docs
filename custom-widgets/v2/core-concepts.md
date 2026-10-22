@@ -9,7 +9,7 @@ description: >-
 
 This page explains how custom widgets are loaded, initialized, and managed by the platform. It covers the runtime model that applies to **all** widgets regardless of framework — React, Vue, vanilla JavaScript, or anything else.
 
-The full API of the `sdk` object lives in the SDK tab — see the [Widget Runtime Reference](/sdk/runtime-reference).
+The full API of the `sdk` object lives in the SDK tab — see the [`init(sdk)` runtime reference](/sdk/reference#init-sdk-runtime).
 
 ## How Widgets Run
 
@@ -90,7 +90,7 @@ export async function init(sdk) {
 }
 ```
 
-**Calling connectors and the Web SDK:** inside `init(sdk)`, use `sdk.connectors.execute(...)` for connector calls and `sdk.web` for the community Web SDK (`undefined` where the host page has none, so check it before use).
+**When you see a different pattern:** `rendering-and-dom.md` shows an IIFE + `document.querySelectorAll('gs-cc-registry-widget[...]')` example. That pattern is for scripts running OUTSIDE a widget instance (e.g. a page script iterating over multiple widget hosts). It is NOT the pattern for code running inside `init(sdk)`. If you are writing `init(sdk)`, use the skeleton above.
 
 ## The `init(sdk)` Contract
 
@@ -234,7 +234,7 @@ The `on()` method returns an unsubscribe function, called when the listener is n
 
 ## Next Steps
 
-* [Widget Runtime Reference](/sdk/runtime-reference) — Properties, methods, and events on the `sdk` object
+* [`init(sdk)` runtime reference](/sdk/reference#init-sdk-runtime) — Properties, methods, and events on the `sdk` object
 * [Use Design Tokens](design-tokens) — Apply community branding to your widget's CSS
 * [Design Tokens Reference](design-tokens-reference) — The full token catalog and platform default values
 * [Using React](using-react) — Build widgets with React

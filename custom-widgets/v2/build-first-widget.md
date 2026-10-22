@@ -228,5 +228,5 @@ You scaffolded a React widget with the CLI, styled it with your community's desi
 * [Using React](using-react) — more React patterns: custom hooks, error boundaries, and bundling tips
 * [Widget Runtime](core-concepts) — understand how widgets run, the Shadow DOM model, and the full runtime lifecycle
 * [Configurable Widgets](configurable-widgets) — all field types and validation rules for configuration properties
-* [Widget Runtime Reference](/sdk/runtime-reference) — every method and event on the `sdk` object
+* [`init(sdk)` runtime reference](/sdk/reference#init-sdk-runtime) — every method and event on the `sdk` object
 * [Rendering & DOM](rendering-and-dom) — Shadow DOM patterns and element querying in depth

@@ -8,7 +8,7 @@ description: >-
 
 # Rendering & DOM
 
-To read or update your widget's own markup inside `init(sdk)`, query with `sdk.$()` / `sdk.$$()`, which are scoped to your widget's shadow root — plain `document.querySelector()` calls cannot reach elements inside your widget. Use this guide when your widget needs to manipulate its rendered DOM directly, especially if multiple instances of the same widget type can appear on the same page.
+To read or update your widget's own markup, query through its Shadow DOM host rather than the main `document` — plain `document.querySelector()` calls cannot reach elements inside your widget. Use this guide when your widget needs to manipulate its rendered DOM directly, especially if multiple instances of the same widget type can appear on the same page.
 
 ## Overview
 
@@ -23,7 +23,7 @@ This encapsulation has important implications:
 
 ## Shadow DOM and Host Element
 
-The host element is a `<gs-cc-registry-widget>` custom element that wraps your widget. Inside widget code, use `sdk.$()` / `sdk.$$()` from `init(sdk)` — they query your widget's own shadow root, so you never touch the host element yourself.
+The host element is a `<gs-cc-registry-widget>` custom element that wraps your widget. To access elements inside your widget, query for the host element and access its `shadowRoot`.
 
 **Incorrect — does not work inside a widget:**
 
@@ -32,16 +32,7 @@ The host element is a `<gs-cc-registry-widget>` custom element that wraps your w
 const el = document.querySelector('.my-class');
 ```
 
-**Correct — use `sdk.$()` inside `init(sdk)`, after `await sdk.whenReady()`:**
-
-```js
-export async function init(sdk) {
-  await sdk.whenReady()
-  const el = sdk.$('.my-class')
-}
-```
-
-**From a page script (outside any widget instance) — query through the shadow root:**
+**Correct — query through the shadow root:**
 
 ```js
 const hosts = document.querySelectorAll(
@@ -55,7 +46,7 @@ hosts.forEach(function(host) {
 });
 ```
 
-Replace `your_widget_type` with the `type` value from your widget's `extensions_registry.json` entry. This host-element pattern is only for page scripts; widget code should use `sdk.$()`.
+Replace `your_widget_type` with the `type` value from your widget's `extensions_registry.json` entry.
 
 The `*=` operator matches widgets whose `data-widget-type` attribute *contains* your type string — this is more robust than exact match (`=`) if the platform adds a prefix or suffix to the attribute value.
 
@@ -67,7 +58,7 @@ Whichever selector you query with — `root.querySelector(...)` here, or `sdk.$(
 
 ## Multiple Widget Instances
 
-The same widget type can appear multiple times on a page. `init(sdk)` runs once per widget instance, and `sdk.$()` is scoped to that instance's shadow root, so each instance updates itself with no host iteration.
+The same widget type can appear multiple times on a page. If you use `querySelector` (which returns only the **first** match), only one instance updates while the others remain unchanged.
 
 **Incorrect — only updates the first instance:**
 
@@ -75,17 +66,7 @@ The same widget type can appear multiple times on a page. `init(sdk)` runs once 
 const host = document.querySelector('gs-cc-registry-widget[data-widget-type*="weather"]');
 ```
 
-**Correct — each instance runs its own `init(sdk)`:**
-
-```js
-export async function init(sdk) {
-  await sdk.whenReady()
-  // Update this instance's DOM
-  sdk.$('.my-class').textContent = 'Updated'
-}
-```
-
-**From a page script (outside any widget instance) — iterate all hosts:**
+**Correct — updates all instances:**
 
 ```js
 const hosts = document.querySelectorAll('gs-cc-registry-widget[data-widget-type*="weather"]');
@@ -121,7 +102,7 @@ flowchart TD
 
 A minimal widget that fetches weather data through a connector and updates its own DOM, combining the patterns above:
 
-Inside `init(sdk)`, `sdk.$()` already queries your widget's own shadow root, and `sdk.connectors` calls the connector. See [Widget Runtime Reference](/sdk/runtime-reference) for the `init(sdk)` object and [Connectors SDK](/sdk/connectors-sdk/overview) for `sdk.connectors`.
+Inside `init(sdk)`, `sdk.$()` already queries your widget's own shadow root, and `connectors` from `@gainsight-hub/sdk` calls the connector (see [SDK](/sdk/)). See [`init(sdk)` runtime reference](/sdk/reference#init-sdk-runtime) for the `init(sdk)` object and [Connectors SDK](/sdk/reference#connectors) for `connectors`.
 
 ```html
 <!-- index.html — your widget entry file -->
@@ -134,43 +115,42 @@ Inside `init(sdk)`, `sdk.$()` already queries your widget's own shadow root, and
 </div>
 
 <script type="module">
-  // runs once per widget instance
-  export async function init(sdk) {
-    await sdk.whenReady()
+import { connectors } from "@gainsight-hub/sdk";
 
-    const statusEl = sdk.$('.status')
-    const resultEl = sdk.$('.result')
-    const cityEl = sdk.$('.city-name')
-    const tempEl = sdk.$('.temperature')
+export async function init(sdk) {
+  await sdk.whenReady();
 
-    try {
-      const data = await sdk.connectors.execute({
-        permalink: 'weather-api',
-        method: 'GET',
-        queryParams: { q: 'Warsaw' }
-      })
+  const statusEl = sdk.$(".status");
+  const resultEl = sdk.$(".result");
 
-      cityEl.textContent = data.city
-      tempEl.textContent = data.temperature + '°C'
-      statusEl.style.display = 'none'
-      resultEl.style.display = 'block'
-    } catch (err) {
-      statusEl.textContent = 'Failed to load weather data.'
-      console.error('Connector error:', err)
-    }
+  try {
+    const data = await connectors.execute({
+      permalink: "weather-api",
+      method: "GET",
+      queryParams: { q: "Warsaw" },
+    });
+
+    sdk.$(".city-name").textContent = data.city;
+    sdk.$(".temperature").textContent = `${data.temperature}°C`;
+    statusEl.style.display = "none";
+    resultEl.style.display = "block";
+  } catch (err) {
+    statusEl.textContent = "Failed to load weather data.";
+    console.error("Connector error:", err);
   }
+}
 </script>
 ```
 
 **Key points in this example:**
 
-1. `init(sdk)` runs once per widget instance, so each instance updates its own DOM independently
-2. `sdk.connectors` is available on the `sdk` object — no script tag, import, or construction is required
-3. Elements are queried with `sdk.$()`, which is scoped to the widget's shadow root, not `document`
+1. The inline script is a module (`type="module"`), so it can import `connectors` from `@gainsight-hub/sdk` — no script tag for the SDK is required
+2. Customer Community calls the exported `init(sdk)` once per widget instance, so multiple instances need no loop
+3. `sdk.$()` queries this instance's own shadow root, not `document`
 
 ## Next Steps
 
 * [Widget Runtime](core-concepts) — The `init(sdk)` contract and SDK API reference
 * [Widget Definition Reference](widget-schema) — The `type` field used in querySelector selectors
-* [Connectors SDK](/sdk/connectors-sdk/overview) — Reference for `sdk.connectors`
+* [Connectors SDK](/sdk/reference#connectors) — Reference for `connectors`
 * [Card Grid widget in the template repository](https://github.com/gainsight-hub/widgets-repository-template/tree/main/widgets/card_grid) — Working example of Shadow DOM manipulation with dynamic content and connector data

@@ -62,7 +62,7 @@ createRoot(sdk.$('#root')) // with <div id="root"></div> in your widget HTML
 
 ## Step-by-Step: Build a React Widget
 
-The `sdk` object does **not** need to be bundled into your widget — your widget receives it as the argument to its `init(sdk)` function at runtime. You **must** bundle React and any other framework dependencies into your widget, but the `sdk` object itself is provided by the platform.
+The `sdk` object does **not** need to be bundled into your widget — your widget receives it as the argument to its `init(sdk)` function at runtime. To call connectors or the Web SDK, use `import { connectors, web } from "@gainsight-hub/sdk"`; the platform's import map provides that package, so keep it external and never bundle it (see [SDK](/sdk/)). You **must** bundle React and any other framework dependencies into your widget.
 
 ### 1. Scaffold the Widget
 
@@ -88,7 +88,7 @@ The registry entry's `source` points at the build output: `path` is `widgets/tas
 
 The entry point exports the `init` function that mounts your React app and registers cleanup. The scaffolded **`src/main.tsx`** already does this: it waits for `sdk.whenReady()`, adds `src/widget.css` to the widget's Shadow DOM, mounts the `App` component, and unmounts it on `destroy`.
 
-> The TypeScript examples in this guide import the `WidgetSDK` type from the scaffolded `src/types.ts`. See the [Widget Runtime Reference](/sdk/runtime-reference) for the full interface, and extend `src/types.ts` when you use more of it.
+> The TypeScript examples in this guide import the `WidgetSDK` type from the scaffolded `src/types.ts`. See the [`init(sdk)` runtime reference](/sdk/reference#init-sdk-runtime) for the full interface, and extend `src/types.ts` when you use more of it.
 
 To mount the component you build in the next step instead of `App`, change two lines in `src/main.tsx`. Replace the `App` import with:
 

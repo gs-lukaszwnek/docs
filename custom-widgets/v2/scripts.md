@@ -97,6 +97,7 @@ The `attributes` field is a plain object where each key is the attribute name an
 | `async` | `""` | Script downloads in parallel and executes as soon as it's ready |
 | `crossorigin` | `"anonymous"` | Enables CORS requests without sending credentials |
 | `crossorigin` | `"use-credentials"` | Enables CORS requests with credentials |
+| `type` | `"module"` | Loads the script as an ES module. A script that imports `@gainsight-hub/sdk` must be a module |
 
 ### When to Use `defer`
 
@@ -129,12 +130,13 @@ You can combine multiple attributes on a single script:
 {
   "attributes": {
     "defer": "",
-    "crossorigin": "anonymous"
+    "crossorigin": "anonymous",
+    "type": "module"
   }
 }
 ```
 
-This produces: `<script src="..." defer crossorigin="anonymous"></script>`
+This produces: `<script src="..." defer crossorigin="anonymous" type="module"></script>`
 
 ## Conditional Loading
 

@@ -28,16 +28,16 @@ When a connector needs to know *who* the user is, set the value in the connector
 The browser controls `queryParams`, so a user can change the value to impersonate someone else.
 
 ```javascript
-export async function init(sdk) {
-  // Browser code — user can tamper with the ID
-  const data = await sdk.connectors.execute({
-    permalink: "user-profile-api",
-    method: "GET",
-    queryParams: {
-      user_id: currentUser.id  // attacker changes this in dev tools
-    }
-  });
-}
+// Browser code — user can tamper with the ID
+import { connectors } from "@gainsight-hub/sdk";
+
+const data = await connectors.execute({
+  permalink: "user-profile-api",
+  method: "GET",
+  queryParams: {
+    user_id: currentUser.id  // attacker changes this in dev tools
+  }
+});
 ```
 
 :::

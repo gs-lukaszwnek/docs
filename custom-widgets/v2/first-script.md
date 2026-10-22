@@ -28,10 +28,17 @@ gsds script new hello
 `gsds script new` creates `scripts/hello/script.js` and adds an entry for it to `extensions_registry.json`. Open `scripts/hello/script.js` and replace its content with:
 
 ```javascript
-console.log('Hello from your first global script!')
+import { web } from "@gainsight-hub/sdk";
+
+try {
+  const user = await web.Context.User();
+  console.info("[gsds script] loaded for", user.username);
+} catch (error) {
+  console.warn("[gsds script] Web SDK unavailable:", error);
+}
 ```
 
-This is a plain JavaScript file — no module syntax, no SDK. Global scripts run directly in the page context, so anything you would write in a normal `<script>` tag works here.
+This is an ES module that imports the Web SDK from `@gainsight-hub/sdk` (see [SDK](/sdk/)). Global scripts run directly in the page context, so the page's own globals and DOM are available too. `gsds script new` (gsds 1.9.0+) registers the script with `"attributes": {"type": "module"}`, which a script that uses the import needs; `--attr` cannot change the type.
 
 ## Step 2: Review the Registry Entry
 
@@ -43,8 +50,11 @@ Open `extensions_registry.json` at the root of your project. `gsds script new` a
     {
       "name": "hello",
       "path": "scripts/hello/script.js",
-      "description": "Logs a greeting to the console on every page",
-      "placement": "head"
+      "description": "Logs the current user to the console on every page",
+      "placement": "head",
+      "attributes": {
+        "type": "module"
+      }
     }
   ]
 }
@@ -73,7 +83,7 @@ If the status shows **Failed**, open the build details to see the error message.
 2. Open the browser developer tools (F12 or right-click → **Inspect**).
 3. Switch to the **Console** tab.
 
-You should see `Hello from your first global script!` logged to the console. Navigate between pages — the message is logged on each one, because the script is injected into every page by default.
+You should see `[gsds script] loaded for` followed by your username (or `guest` when signed out) logged to the console. Navigate between pages — the message is logged on each one, because the script is injected into every page by default.
 
 If you do not see the log, check that the build completed successfully and that the page is from the community where your repository is enabled.
 
@@ -87,8 +97,11 @@ A script with no `rules` runs everywhere. To restrict it, add a `rules` array. U
     {
       "name": "hello",
       "path": "scripts/hello/script.js",
-      "description": "Logs a greeting to the console on the homepage",
+      "description": "Logs the current user to the console on the homepage",
       "placement": "head",
+      "attributes": {
+        "type": "module"
+      },
       "rules": [
         { "field": "page", "operator": "eq", "value": "homepage" }
       ]
@@ -103,7 +116,7 @@ For the full list of targeting fields and operators, see [Page Targeting](page-t
 
 ## What You Built
 
-You scaffolded a script with the CLI, registered it in the platform, pushed it to production, and verified it runs on community pages. You then added a rule to target a specific page. The script runs directly in the page context with no SDK, on every request that matches its rules.
+You scaffolded a script with the CLI, registered it in the platform, pushed it to production, and verified it runs on community pages. You then added a rule to target a specific page. The script runs directly in the page context and reads the current user through the Web SDK import, on every request that matches its rules.
 
 ## What's Next
 

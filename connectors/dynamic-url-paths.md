@@ -17,7 +17,9 @@ A connector fetching a single idea's endorsements declares `idea_id` as a path p
 
 ```javascript
 // Connector URL: https://api.example.com/ideas/{{ pathParams.idea_id }}/endorsements
-const data = await sdk.connectors.execute({
+import { connectors } from "@gainsight-hub/sdk";
+
+const data = await connectors.execute({
   permalink: "idea-endorsements",
   method: "GET",
   pathParams: { idea_id: 42 }
@@ -76,14 +78,16 @@ Missing wins over invalid: if any required key is missing, only `MISSING_PATH_PA
 
 ## Composite connectors
 
-Path parameters are **not supported** on [composite connectors](composite-connectors). The SDK's `sdk.connectors.composite.execute` rejects if `pathParams` is supplied — no request is sent. If you need per-call path values in a composite flow, compose simple connectors from inside the composite's step URLs using the step result variables.
+Path parameters are **not supported** on [composite connectors](composite-connectors). The SDK's `connectors.composite.execute` rejects if `pathParams` is supplied — no request is sent. If you need per-call path values in a composite flow, compose simple connectors from inside the composite's step URLs using the step result variables.
 
 ## SDK reference
 
-The `pathParams` field on `sdk.connectors.execute` accepts `Record<string, string | number>`. The SDK serializes the values into an `X-Path-Params` HTTP header in urlencoded form (same wire shape as a query string) and the server reads them from there. You don't need to handle the encoding — the SDK does it.
+The `pathParams` field on `connectors.execute` accepts `Record<string, string | number>`. The SDK serializes the values into an `X-Path-Params` HTTP header in urlencoded form (same wire shape as a query string) and the server reads them from there. You don't need to handle the encoding — the SDK does it.
 
 ```javascript
-await sdk.connectors.execute({
+import { connectors } from "@gainsight-hub/sdk";
+
+await connectors.execute({
   permalink: "user-posts",
   method: "GET",
   pathParams: { user_id: 42, post_slug: "hello-world" }
@@ -108,7 +112,7 @@ If the values pass the SDK but fail server-side validation, the promise rejects 
 
 ```javascript
 try {
-  await sdk.connectors.execute({ permalink: "user-posts", method: "GET", pathParams: { id } });
+  await connectors.execute({ permalink: "user-posts", method: "GET", pathParams: { id } });
 } catch (err) {
   if (err.code === "MISSING_PATH_PARAMETERS" || err.code === "INVALID_PATH_PARAMETERS") {
     // err.params lists the failing keys
@@ -126,6 +130,6 @@ try {
 
 1. Connector definition side (connectors\_registry.json / Code Mode JSON): declare each parameter as a row in `path_parameters`. Row shape mirrors `headers` and `query_parameters`: `{ "key": "<param_name>" }`. Example: `"path_parameters": [{ "key": "idea_id" }]`.
 
-2. SDK caller side (sdk.connectors.execute): pass `pathParams` as an object whose *object keys* are the parameter names. Example: `pathParams: { idea_id: 42 }`.
+2. SDK caller side (connectors.execute): pass `pathParams` as an object whose *object keys* are the parameter names. Example: `pathParams: { idea_id: 42 }`.
 
 The connector-side value (`"idea_id"`) and the SDK-side key (`idea_id`) must match, and both must match the `{{ pathParams.X }}` reference in the connector `url`.

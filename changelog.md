@@ -13,7 +13,7 @@ The Developer Studio CLI (`gsds`) is now available, letting you scaffold widgets
 
 ## 2026-09-21 - Web SDK: User Context
 
-The Web SDK can now read the current viewer and look up community members directly in the browser, without building a Connector. Use `ChWebSdk.Context.User()` to get the signed-in user (and a guest result when no one is signed in), and the `ChWebSdk.User.*` methods to fetch, list, filter, and search members. All responses use one unified user model and never include private data such as email addresses, message counts, or login source. See [User Context](/sdk/web-sdk/user-context) for the full reference.
+The Web SDK can now read the current viewer and look up community members directly in the browser, without building a Connector. Use `ChWebSdk.Context.User()` to get the signed-in user (and a guest result when no one is signed in), and the `ChWebSdk.User.*` methods to fetch, list, filter, and search members. All responses use one unified user model and never include private data such as email addresses, message counts, or login source. See [User Context](/sdk/user-context) for the full reference.
 
 ## 2026-09-18 - More Reliable Recovery When the AI Widget Builder Needs a Second Attempt
 

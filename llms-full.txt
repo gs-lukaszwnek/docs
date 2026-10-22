@@ -45,7 +45,7 @@ The **No-Code Builder** is a visual editor where you can add, arrange, and confi
 
 **Best for**: Developers wiring live data into a widget.
 
-The **SDK** is the `sdk` object passed to your widget's `init(sdk)` function. Use `sdk.connectors` to call connectors and `sdk.web` to read community context from the browser.
+The **SDK** is the JavaScript library your widget code uses to call connectors and read community context from the browser.
 
 [SDK](/sdk/)
 
@@ -138,9 +138,9 @@ A reusable, plain-text configuration value — such as a base URL, environment i
 
 [Secrets and Variables](/connectors/secrets/#variables)
 
-## SDK
+## SDK (Widget SDK)
 
-The `sdk` object passed to your widget's `init(sdk)` function. It carries the widget runtime (props, shadow root, design tokens) and two clients: `sdk.connectors` calls connectors from inside a widget, so the browser never sees your credentials (`sdk.connectors.execute(...)` runs a connector and returns its response), and `sdk.web` reads community context through the Web SDK.
+A JavaScript library that widget code uses to interact with the platform. Its primary use is calling connectors from inside a widget — a call like `connectors.execute(...)`, with `connectors` imported from `@gainsight-hub/sdk`, runs a connector and returns its response, so the browser never sees your credentials.
 
 [SDK](/sdk/)
 
@@ -678,7 +678,7 @@ You scaffolded a React widget with the CLI, styled it with your community's desi
 * [Using React](using-react) — more React patterns: custom hooks, error boundaries, and bundling tips
 * [Widget Runtime](core-concepts) — understand how widgets run, the Shadow DOM model, and the full runtime lifecycle
 * [Configurable Widgets](configurable-widgets) — all field types and validation rules for configuration properties
-* [Widget Runtime Reference](/sdk/runtime-reference) — every method and event on the `sdk` object
+* [`init(sdk)` runtime reference](/sdk/reference#init-sdk-runtime) — every method and event on the `sdk` object
 * [Rendering & DOM](rendering-and-dom) — Shadow DOM patterns and element querying in depth
 
 ---
@@ -713,10 +713,17 @@ gsds script new hello
 `gsds script new` creates `scripts/hello/script.js` and adds an entry for it to `extensions_registry.json`. Open `scripts/hello/script.js` and replace its content with:
 
 ```javascript
-console.log('Hello from your first global script!')
+import { web } from "@gainsight-hub/sdk";
+
+try {
+  const user = await web.Context.User();
+  console.info("[gsds script] loaded for", user.username);
+} catch (error) {
+  console.warn("[gsds script] Web SDK unavailable:", error);
+}
 ```
 
-This is a plain JavaScript file — no module syntax, no SDK. Global scripts run directly in the page context, so anything you would write in a normal `<script>` tag works here.
+This is an ES module that imports the Web SDK from `@gainsight-hub/sdk` (see [SDK](/sdk/)). Global scripts run directly in the page context, so the page's own globals and DOM are available too. `gsds script new` (gsds 1.9.0+) registers the script with `"attributes": {"type": "module"}`, which a script that uses the import needs; `--attr` cannot change the type.
 
 ## Step 2: Review the Registry Entry
 
@@ -728,8 +735,11 @@ Open `extensions_registry.json` at the root of your project. `gsds script new` a
     {
       "name": "hello",
       "path": "scripts/hello/script.js",
-      "description": "Logs a greeting to the console on every page",
-      "placement": "head"
+      "description": "Logs the current user to the console on every page",
+      "placement": "head",
+      "attributes": {
+        "type": "module"
+      }
     }
   ]
 }
@@ -758,7 +768,7 @@ If the status shows **Failed**, open the build details to see the error message.
 2. Open the browser developer tools (F12 or right-click → **Inspect**).
 3. Switch to the **Console** tab.
 
-You should see `Hello from your first global script!` logged to the console. Navigate between pages — the message is logged on each one, because the script is injected into every page by default.
+You should see `[gsds script] loaded for` followed by your username (or `guest` when signed out) logged to the console. Navigate between pages — the message is logged on each one, because the script is injected into every page by default.
 
 If you do not see the log, check that the build completed successfully and that the page is from the community where your repository is enabled.
 
@@ -772,8 +782,11 @@ A script with no `rules` runs everywhere. To restrict it, add a `rules` array. U
     {
       "name": "hello",
       "path": "scripts/hello/script.js",
-      "description": "Logs a greeting to the console on the homepage",
+      "description": "Logs the current user to the console on the homepage",
       "placement": "head",
+      "attributes": {
+        "type": "module"
+      },
       "rules": [
         { "field": "page", "operator": "eq", "value": "homepage" }
       ]
@@ -788,7 +801,7 @@ For the full list of targeting fields and operators, see [Page Targeting](page-t
 
 ## What You Built
 
-You scaffolded a script with the CLI, registered it in the platform, pushed it to production, and verified it runs on community pages. You then added a rule to target a specific page. The script runs directly in the page context with no SDK, on every request that matches its rules.
+You scaffolded a script with the CLI, registered it in the platform, pushed it to production, and verified it runs on community pages. You then added a rule to target a specific page. The script runs directly in the page context and reads the current user through the Web SDK import, on every request that matches its rules.
 
 ## What's Next
 
@@ -1724,7 +1737,7 @@ description: >-
 
 This page explains how custom widgets are loaded, initialized, and managed by the platform. It covers the runtime model that applies to **all** widgets regardless of framework — React, Vue, vanilla JavaScript, or anything else.
 
-The full API of the `sdk` object lives in the SDK tab — see the [Widget Runtime Reference](/sdk/runtime-reference).
+The full API of the `sdk` object lives in the SDK tab — see the [`init(sdk)` runtime reference](/sdk/reference#init-sdk-runtime).
 
 ## How Widgets Run
 
@@ -1805,7 +1818,7 @@ export async function init(sdk) {
 }
 ```
 
-**Calling connectors and the Web SDK:** inside `init(sdk)`, use `sdk.connectors.execute(...)` for connector calls and `sdk.web` for the community Web SDK (`undefined` where the host page has none, so check it before use).
+**When you see a different pattern:** `rendering-and-dom.md` shows an IIFE + `document.querySelectorAll('gs-cc-registry-widget[...]')` example. That pattern is for scripts running OUTSIDE a widget instance (e.g. a page script iterating over multiple widget hosts). It is NOT the pattern for code running inside `init(sdk)`. If you are writing `init(sdk)`, use the skeleton above.
 
 ## The `init(sdk)` Contract
 
@@ -1949,7 +1962,7 @@ The `on()` method returns an unsubscribe function, called when the listener is n
 
 ## Next Steps
 
-* [Widget Runtime Reference](/sdk/runtime-reference) — Properties, methods, and events on the `sdk` object
+* [`init(sdk)` runtime reference](/sdk/reference#init-sdk-runtime) — Properties, methods, and events on the `sdk` object
 * [Use Design Tokens](design-tokens) — Apply community branding to your widget's CSS
 * [Design Tokens Reference](design-tokens-reference) — The full token catalog and platform default values
 * [Using React](using-react) — Build widgets with React
@@ -1970,7 +1983,7 @@ description: >-
 
 # Rendering & DOM
 
-To read or update your widget's own markup inside `init(sdk)`, query with `sdk.$()` / `sdk.$$()`, which are scoped to your widget's shadow root — plain `document.querySelector()` calls cannot reach elements inside your widget. Use this guide when your widget needs to manipulate its rendered DOM directly, especially if multiple instances of the same widget type can appear on the same page.
+To read or update your widget's own markup, query through its Shadow DOM host rather than the main `document` — plain `document.querySelector()` calls cannot reach elements inside your widget. Use this guide when your widget needs to manipulate its rendered DOM directly, especially if multiple instances of the same widget type can appear on the same page.
 
 ## Overview
 
@@ -1985,7 +1998,7 @@ This encapsulation has important implications:
 
 ## Shadow DOM and Host Element
 
-The host element is a `<gs-cc-registry-widget>` custom element that wraps your widget. Inside widget code, use `sdk.$()` / `sdk.$$()` from `init(sdk)` — they query your widget's own shadow root, so you never touch the host element yourself.
+The host element is a `<gs-cc-registry-widget>` custom element that wraps your widget. To access elements inside your widget, query for the host element and access its `shadowRoot`.
 
 **Incorrect — does not work inside a widget:**
 
@@ -1994,16 +2007,7 @@ The host element is a `<gs-cc-registry-widget>` custom element that wraps your w
 const el = document.querySelector('.my-class');
 ```
 
-**Correct — use `sdk.$()` inside `init(sdk)`, after `await sdk.whenReady()`:**
-
-```js
-export async function init(sdk) {
-  await sdk.whenReady()
-  const el = sdk.$('.my-class')
-}
-```
-
-**From a page script (outside any widget instance) — query through the shadow root:**
+**Correct — query through the shadow root:**
 
 ```js
 const hosts = document.querySelectorAll(
@@ -2017,7 +2021,7 @@ hosts.forEach(function(host) {
 });
 ```
 
-Replace `your_widget_type` with the `type` value from your widget's `extensions_registry.json` entry. This host-element pattern is only for page scripts; widget code should use `sdk.$()`.
+Replace `your_widget_type` with the `type` value from your widget's `extensions_registry.json` entry.
 
 The `*=` operator matches widgets whose `data-widget-type` attribute *contains* your type string — this is more robust than exact match (`=`) if the platform adds a prefix or suffix to the attribute value.
 
@@ -2029,7 +2033,7 @@ Whichever selector you query with — `root.querySelector(...)` here, or `sdk.$(
 
 ## Multiple Widget Instances
 
-The same widget type can appear multiple times on a page. `init(sdk)` runs once per widget instance, and `sdk.$()` is scoped to that instance's shadow root, so each instance updates itself with no host iteration.
+The same widget type can appear multiple times on a page. If you use `querySelector` (which returns only the **first** match), only one instance updates while the others remain unchanged.
 
 **Incorrect — only updates the first instance:**
 
@@ -2037,17 +2041,7 @@ The same widget type can appear multiple times on a page. `init(sdk)` runs once 
 const host = document.querySelector('gs-cc-registry-widget[data-widget-type*="weather"]');
 ```
 
-**Correct — each instance runs its own `init(sdk)`:**
-
-```js
-export async function init(sdk) {
-  await sdk.whenReady()
-  // Update this instance's DOM
-  sdk.$('.my-class').textContent = 'Updated'
-}
-```
-
-**From a page script (outside any widget instance) — iterate all hosts:**
+**Correct — updates all instances:**
 
 ```js
 const hosts = document.querySelectorAll('gs-cc-registry-widget[data-widget-type*="weather"]');
@@ -2083,7 +2077,7 @@ flowchart TD
 
 A minimal widget that fetches weather data through a connector and updates its own DOM, combining the patterns above:
 
-Inside `init(sdk)`, `sdk.$()` already queries your widget's own shadow root, and `sdk.connectors` calls the connector. See [Widget Runtime Reference](/sdk/runtime-reference) for the `init(sdk)` object and [Connectors SDK](/sdk/connectors-sdk/overview) for `sdk.connectors`.
+Inside `init(sdk)`, `sdk.$()` already queries your widget's own shadow root, and `connectors` from `@gainsight-hub/sdk` calls the connector (see [SDK](/sdk/)). See [`init(sdk)` runtime reference](/sdk/reference#init-sdk-runtime) for the `init(sdk)` object and [Connectors SDK](/sdk/reference#connectors) for `connectors`.
 
 ```html
 <!-- index.html — your widget entry file -->
@@ -2096,45 +2090,44 @@ Inside `init(sdk)`, `sdk.$()` already queries your widget's own shadow root, and
 </div>
 
 <script type="module">
-  // runs once per widget instance
-  export async function init(sdk) {
-    await sdk.whenReady()
+import { connectors } from "@gainsight-hub/sdk";
 
-    const statusEl = sdk.$('.status')
-    const resultEl = sdk.$('.result')
-    const cityEl = sdk.$('.city-name')
-    const tempEl = sdk.$('.temperature')
+export async function init(sdk) {
+  await sdk.whenReady();
 
-    try {
-      const data = await sdk.connectors.execute({
-        permalink: 'weather-api',
-        method: 'GET',
-        queryParams: { q: 'Warsaw' }
-      })
+  const statusEl = sdk.$(".status");
+  const resultEl = sdk.$(".result");
 
-      cityEl.textContent = data.city
-      tempEl.textContent = data.temperature + '°C'
-      statusEl.style.display = 'none'
-      resultEl.style.display = 'block'
-    } catch (err) {
-      statusEl.textContent = 'Failed to load weather data.'
-      console.error('Connector error:', err)
-    }
+  try {
+    const data = await connectors.execute({
+      permalink: "weather-api",
+      method: "GET",
+      queryParams: { q: "Warsaw" },
+    });
+
+    sdk.$(".city-name").textContent = data.city;
+    sdk.$(".temperature").textContent = `${data.temperature}°C`;
+    statusEl.style.display = "none";
+    resultEl.style.display = "block";
+  } catch (err) {
+    statusEl.textContent = "Failed to load weather data.";
+    console.error("Connector error:", err);
   }
+}
 </script>
 ```
 
 **Key points in this example:**
 
-1. `init(sdk)` runs once per widget instance, so each instance updates its own DOM independently
-2. `sdk.connectors` is available on the `sdk` object — no script tag, import, or construction is required
-3. Elements are queried with `sdk.$()`, which is scoped to the widget's shadow root, not `document`
+1. The inline script is a module (`type="module"`), so it can import `connectors` from `@gainsight-hub/sdk` — no script tag for the SDK is required
+2. Customer Community calls the exported `init(sdk)` once per widget instance, so multiple instances need no loop
+3. `sdk.$()` queries this instance's own shadow root, not `document`
 
 ## Next Steps
 
 * [Widget Runtime](core-concepts) — The `init(sdk)` contract and SDK API reference
 * [Widget Definition Reference](widget-schema) — The `type` field used in querySelector selectors
-* [Connectors SDK](/sdk/connectors-sdk/overview) — Reference for `sdk.connectors`
+* [Connectors SDK](/sdk/reference#connectors) — Reference for `connectors`
 * [Card Grid widget in the template repository](https://github.com/gainsight-hub/widgets-repository-template/tree/main/widgets/card_grid) — Working example of Shadow DOM manipulation with dynamic content and connector data
 
 ---
@@ -2203,7 +2196,7 @@ createRoot(sdk.$('#root')) // with <div id="root"></div> in your widget HTML
 
 ## Step-by-Step: Build a React Widget
 
-The `sdk` object does **not** need to be bundled into your widget — your widget receives it as the argument to its `init(sdk)` function at runtime. You **must** bundle React and any other framework dependencies into your widget, but the `sdk` object itself is provided by the platform.
+The `sdk` object does **not** need to be bundled into your widget — your widget receives it as the argument to its `init(sdk)` function at runtime. To call connectors or the Web SDK, use `import { connectors, web } from "@gainsight-hub/sdk"`; the platform's import map provides that package, so keep it external and never bundle it (see [SDK](/sdk/)). You **must** bundle React and any other framework dependencies into your widget.
 
 ### 1. Scaffold the Widget
 
@@ -2229,7 +2222,7 @@ The registry entry's `source` points at the build output: `path` is `widgets/tas
 
 The entry point exports the `init` function that mounts your React app and registers cleanup. The scaffolded **`src/main.tsx`** already does this: it waits for `sdk.whenReady()`, adds `src/widget.css` to the widget's Shadow DOM, mounts the `App` component, and unmounts it on `destroy`.
 
-> The TypeScript examples in this guide import the `WidgetSDK` type from the scaffolded `src/types.ts`. See the [Widget Runtime Reference](/sdk/runtime-reference) for the full interface, and extend `src/types.ts` when you use more of it.
+> The TypeScript examples in this guide import the `WidgetSDK` type from the scaffolded `src/types.ts`. See the [`init(sdk)` runtime reference](/sdk/reference#init-sdk-runtime) for the full interface, and extend `src/types.ts` when you use more of it.
 
 To mount the component you build in the next step instead of `App`, change two lines in `src/main.tsx`. Replace the `App` import with:
 
@@ -3086,7 +3079,7 @@ Use only the tokens meant for widgets. The community's own pages have their own 
 ## Next Steps
 
 * [Design Tokens Reference](design-tokens-reference) — The full token catalog and platform default values
-* [Widget Runtime Reference](/sdk/runtime-reference) — Properties, methods, and events on the `sdk` object
+* [`init(sdk)` runtime reference](/sdk/reference#init-sdk-runtime) — Properties, methods, and events on the `sdk` object
 * [Widget Runtime](core-concepts) — Why widgets receive the `sdk` object and how the runtime model works
 
 ---
@@ -3348,8 +3341,6 @@ flowchart LR
 ```
 
 ## Scripts vs Widgets
-
-Scripts have no access to the [SDK](/sdk/). It is available only to widgets, through the `sdk` object `init(sdk)` receives.
 
 | Aspect | Widget | Script |
 |--------|--------|--------|
@@ -4590,7 +4581,7 @@ An empty `settings: {}` object is valid — all fields take their defaults.
 | `cacheTtlSeconds` | integer | No | — | Cache duration in seconds — use with `cacheStrategy: "ttl"` |
 | `requiresAuthentication` | boolean | No | `false` | Not supported — leave `false` or omit |
 | `headers` | object | No | — | Optional headers sent with the request |
-| `body` | object | No | — | Optional request body, for `POST`. This declarative `body` is the platform-side request body for content fetches — distinct from the SDK `sdk.connectors.execute({ payload })` client option. See the Connectors SDK [Reference](/sdk/connectors-sdk/reference). |
+| `body` | object | No | — | Optional request body, for `POST`. This declarative `body` is the platform-side request body for content fetches — distinct from the SDK `connectors.execute({ payload })` client option. See the Connectors SDK [Reference](/sdk/reference#connectors). |
 | `params` | object | No | — | Optional query parameters |
 
 ### Source Block
@@ -4774,7 +4765,7 @@ Used for both `endpoint` and `valuesEndpoint`.
 | `endpoint` | string | Yes | HTTPS URL for the API call. Supports [URL template tokens](#url-template-tokens). Must start with `https://`. |
 | `method` | string | Yes | HTTP method — `"GET"` or `"POST"` |
 | `headers` | object | No | Additional HTTP headers. See [Disallowed Headers](#disallowed-headers). |
-| `body` | object | No | Request body, for `POST` requests. This declarative `body` is the platform-side request body for dynamic-options fetches — distinct from the SDK `sdk.connectors.execute({ payload })` client option. See the Connectors SDK [Reference](/sdk/connectors-sdk/reference). |
+| `body` | object | No | Request body, for `POST` requests. This declarative `body` is the platform-side request body for dynamic-options fetches — distinct from the SDK `connectors.execute({ payload })` client option. See the Connectors SDK [Reference](/sdk/reference#connectors). |
 | `params` | object | No | Query parameters appended to the URL after template interpolation. |
 
 #### URL Template Tokens
@@ -5043,6 +5034,7 @@ The `attributes` field is a plain object where each key is the attribute name an
 | `async` | `""` | Script downloads in parallel and executes as soon as it's ready |
 | `crossorigin` | `"anonymous"` | Enables CORS requests without sending credentials |
 | `crossorigin` | `"use-credentials"` | Enables CORS requests with credentials |
+| `type` | `"module"` | Loads the script as an ES module. A script that imports `@gainsight-hub/sdk` must be a module |
 
 ### When to Use `defer`
 
@@ -5075,12 +5067,13 @@ You can combine multiple attributes on a single script:
 {
   "attributes": {
     "defer": "",
-    "crossorigin": "anonymous"
+    "crossorigin": "anonymous",
+    "type": "module"
   }
 }
 ```
 
-This produces: `<script src="..." defer crossorigin="anonymous"></script>`
+This produces: `<script src="..." defer crossorigin="anonymous" type="module"></script>`
 
 ## Conditional Loading
 
@@ -5965,7 +5958,7 @@ These style the community's own pages — its navigation, sidebars, and feeds. T
 ## Next Steps
 
 * [Use Design Tokens](design-tokens) — usage rules and how to reference these tokens in your widget's CSS
-* [Widget Runtime Reference](/sdk/runtime-reference) — Properties, methods, and events on the `sdk` object
+* [`init(sdk)` runtime reference](/sdk/reference#init-sdk-runtime) — Properties, methods, and events on the `sdk` object
 
 ---
 
@@ -6532,37 +6525,39 @@ These issues occur after a widget is published and running in the browser, not d
 
 **Root cause**: `document.querySelector()` cannot reach elements inside Shadow DOM. The connector response arrives, but your code fails to find the DOM element to update.
 
-**Solution**: Query elements with `sdk.$()` inside `export async function init(sdk)`, after `await sdk.whenReady()`. `sdk.$()` is scoped to the widget's shadow root:
+**Solution**: Query elements through the widget's shadow root, not `document`:
 
 ```js
-export async function init(sdk) {
-  await sdk.whenReady()
-
-  const data = await sdk.connectors.execute({ permalink: 'weather-api', method: 'GET' })
-  sdk.$('.status').textContent = data.city
-}
+var hosts = document.querySelectorAll(
+  'gs-cc-registry-widget[data-widget-type*="your_widget_type"]'
+);
+hosts.forEach(function(host) {
+  var root = host.shadowRoot;
+  if (root) {
+    var el = root.querySelector('.status');
+    // update el here
+  }
+});
 ```
 
 See [Rendering & DOM](rendering-and-dom) for the full pattern.
 
 ### Only one widget instance updates, others stay on 'Loading...'
 
-**Root cause**: Using `document.querySelector` (returns the **first** match only) to find the widget, so only one instance is updated.
+**Root cause**: Using `querySelector` (returns the **first** match only) instead of `querySelectorAll`.
 
-**Solution**: Use `sdk.$()` inside `init(sdk)`. `init` runs once per widget instance, so every instance queries its own shadow root and updates itself:
+**Solution**: Use `querySelectorAll` and iterate over all host elements:
 
 ```js
-// Wrong: returns only the first instance's host
+// Wrong: querySelector returns only the first match
 var host = document.querySelector('gs-cc-registry-widget[data-widget-type*="weather"]');
 
-// Correct: runs for every instance
-export async function init(sdk) {
-  await sdk.whenReady()
-  sdk.$('.status').textContent = 'Updated'
-}
+// Correct: querySelectorAll iterates all instances
+var hosts = document.querySelectorAll('gs-cc-registry-widget[data-widget-type*="weather"]');
+hosts.forEach(function(host) { /* update each instance */ });
 ```
 
-Host iteration (`document.querySelectorAll(...)` plus `host.shadowRoot`) is only needed in page scripts outside a widget. See [Rendering & DOM](rendering-and-dom#multiple-widget-instances).
+See [Rendering & DOM](rendering-and-dom#multiple-widget-instances).
 
 ## Content Security Issues
 
@@ -7062,21 +7057,21 @@ You should see a successful response with weather data for London — temperatur
 
 ## Step 5: Call the Connector from Widget Code
 
-Open your widget HTML file and add the following code (the `sdk` object passed to your widget's `init(sdk)` already includes `sdk.connectors` — no script tag needed):
+Open your widget HTML file and add the following code (the [SDK import](/sdk/#how-the-import-resolves) is resolved automatically by Customer Community):
 
 ```html
 <script type="module">
-export async function init(sdk) {
-  try {
-    const data = await sdk.connectors.execute({
-      permalink: "weather-api",
-      method: "GET",
-      queryParams: { q: "Warsaw" }
-    });
-    console.log("Weather data:", data);
-  } catch (error) {
-    console.error("Connector request failed:", error);
-  }
+import { connectors } from "@gainsight-hub/sdk";
+
+try {
+  const data = await connectors.execute({
+    permalink: "weather-api",
+    method: "GET",
+    queryParams: { q: "Warsaw" }
+  });
+  console.log("Weather data:", data);
+} catch (error) {
+  console.error("Connector request failed:", error);
 }
 </script>
 ```
@@ -7092,24 +7087,31 @@ Update the widget HTML to show the weather data on screen. Replace the `console.
 ```html
 <div id="weather">Loading...</div>
 <script type="module">
-export async function init(sdk) {
-  await sdk.whenReady();
-  try {
-    const data = await sdk.connectors.execute({
-      permalink: "weather-api",
-      method: "GET",
-      queryParams: { q: "Warsaw" }
-    });
-    sdk.$("#weather").textContent =
-      data.location.name + ": " + data.current.temp_c + "°C, " + data.current.condition.text;
-  } catch (error) {
-    console.error("Connector request failed:", error);
-  }
+import { connectors } from "@gainsight-hub/sdk";
+
+try {
+  const data = await connectors.execute({
+    permalink: "weather-api",
+    method: "GET",
+    queryParams: { q: "Warsaw" }
+  });
+  // Find the widget host and query inside its shadow root
+  var hosts = document.querySelectorAll(
+    'gs-cc-registry-widget[data-widget-type*="weather"]'
+  );
+  hosts.forEach(function(host) {
+    var el = host.shadowRoot && host.shadowRoot.getElementById("weather");
+    if (el) {
+      el.textContent = data.location.name + ": " + data.current.temp_c + "°C, " + data.current.condition.text;
+    }
+  });
+} catch (error) {
+  console.error("Connector request failed:", error);
 }
 </script>
 ```
 
-The widget code runs inside Shadow DOM, so `document.getElementById()` cannot reach elements inside the widget. `sdk.$()` queries inside the widget's shadow root instead. See [Rendering & DOM](/custom-widgets/v2/rendering-and-dom) for details on this pattern.
+The widget code runs inside Shadow DOM, so `document.getElementById()` cannot reach elements inside the widget. Instead, find the widget host element and query through its `shadowRoot`. See [Rendering & DOM](/custom-widgets/v2/rendering-and-dom) for details on this pattern.
 
 Publish and open the widget again.
 
@@ -7200,7 +7202,7 @@ Composite connector steps follow the same rules.
 The **permalink** is a URL-safe identifier derived from the Connection Name (lowercase, spaces replaced by hyphens). You use it when calling the connector from widget code:
 
 ```javascript
-sdk.connectors.execute({ permalink: "weather-api", method: "GET" });
+connectors.execute({ permalink: "weather-api", method: "GET" });
 ```
 
 ::: info URL template limitations
@@ -7981,7 +7983,9 @@ A connector fetching a single idea's endorsements declares `idea_id` as a path p
 
 ```javascript
 // Connector URL: https://api.example.com/ideas/{{ pathParams.idea_id }}/endorsements
-const data = await sdk.connectors.execute({
+import { connectors } from "@gainsight-hub/sdk";
+
+const data = await connectors.execute({
   permalink: "idea-endorsements",
   method: "GET",
   pathParams: { idea_id: 42 }
@@ -8040,14 +8044,16 @@ Missing wins over invalid: if any required key is missing, only `MISSING_PATH_PA
 
 ## Composite connectors
 
-Path parameters are **not supported** on [composite connectors](composite-connectors). The SDK's `sdk.connectors.composite.execute` rejects if `pathParams` is supplied — no request is sent. If you need per-call path values in a composite flow, compose simple connectors from inside the composite's step URLs using the step result variables.
+Path parameters are **not supported** on [composite connectors](composite-connectors). The SDK's `connectors.composite.execute` rejects if `pathParams` is supplied — no request is sent. If you need per-call path values in a composite flow, compose simple connectors from inside the composite's step URLs using the step result variables.
 
 ## SDK reference
 
-The `pathParams` field on `sdk.connectors.execute` accepts `Record<string, string | number>`. The SDK serializes the values into an `X-Path-Params` HTTP header in urlencoded form (same wire shape as a query string) and the server reads them from there. You don't need to handle the encoding — the SDK does it.
+The `pathParams` field on `connectors.execute` accepts `Record<string, string | number>`. The SDK serializes the values into an `X-Path-Params` HTTP header in urlencoded form (same wire shape as a query string) and the server reads them from there. You don't need to handle the encoding — the SDK does it.
 
 ```javascript
-await sdk.connectors.execute({
+import { connectors } from "@gainsight-hub/sdk";
+
+await connectors.execute({
   permalink: "user-posts",
   method: "GET",
   pathParams: { user_id: 42, post_slug: "hello-world" }
@@ -8072,7 +8078,7 @@ If the values pass the SDK but fail server-side validation, the promise rejects 
 
 ```javascript
 try {
-  await sdk.connectors.execute({ permalink: "user-posts", method: "GET", pathParams: { id } });
+  await connectors.execute({ permalink: "user-posts", method: "GET", pathParams: { id } });
 } catch (err) {
   if (err.code === "MISSING_PATH_PARAMETERS" || err.code === "INVALID_PATH_PARAMETERS") {
     // err.params lists the failing keys
@@ -8090,7 +8096,7 @@ try {
 
 1. Connector definition side (connectors\_registry.json / Code Mode JSON): declare each parameter as a row in `path_parameters`. Row shape mirrors `headers` and `query_parameters`: `{ "key": "<param_name>" }`. Example: `"path_parameters": [{ "key": "idea_id" }]`.
 
-2. SDK caller side (sdk.connectors.execute): pass `pathParams` as an object whose *object keys* are the parameter names. Example: `pathParams: { idea_id: 42 }`.
+2. SDK caller side (connectors.execute): pass `pathParams` as an object whose *object keys* are the parameter names. Example: `pathParams: { idea_id: 42 }`.
 
 The connector-side value (`"idea_id"`) and the SDK-side key (`idea_id`) must match, and both must match the `{{ pathParams.X }}` reference in the connector `url`.
 
@@ -8216,7 +8222,7 @@ Two variables are specific to payload templates:
 Both are available for POST, PUT, and PATCH requests. For GET requests (or any request with no body), both are `None`. If you render a `None` variable in a template, it produces the literal string `None`, not an empty string — so always guard with a default filter (e.g., {{ body\_text | default('') }}) when the variable may be absent.
 
 ::: info Where `body_text` comes from
-`body_text` is this template's view of the incoming request body. The widget sends that body through the SDK's `payload` option — see the Connectors SDK [Reference](/sdk/connectors-sdk/reference) — and it arrives here as `body_text`.
+`body_text` is this template's view of the incoming request body. The widget sends that body through the SDK's `payload` option — see the Connectors SDK [Reference](/sdk/reference#connectors) — and it arrives here as `body_text`.
 
 This is a separate layer from the declarative `body` field used in [Dynamic Options](/custom-widgets/v2/widget-schema#api-endpoint-object) and the [Widget Definition Reference](/custom-widgets/v2/widget-schema#content-object).
 :::
@@ -8725,54 +8731,52 @@ This table covers regular connector templates. For composite connector step temp
 
 ---
 url: https://developer-portal.gainsight.com/docs/connectors/calling-from-widgets.md
-description: How to call connectors from widget code with sdk.connectors
+description: How to use the SDK to call connectors from widget code
 ---
 
 # Calling from Widget Code
 
-Call a connector by its [permalink](/connectors/configuration) using the [SDK](/sdk/). Call connectors through `sdk.connectors` on the `sdk` object your widget's `init(sdk)` function receives — no script tag, import, or construction is required. The SDK sends the request to the backend connector instead of calling the destination API directly. See the [Connectors SDK overview](/sdk/connectors-sdk/overview) for the full API.
+Call a connector by its [permalink](/connectors/configuration) using the [SDK](/sdk/). Import `connectors` from `@gainsight-hub/sdk` ([how the import works](/sdk/#how-the-import-resolves)). The SDK sends the request to the backend connector instead of calling the destination API directly. See the [`connectors` reference](/sdk/reference#connectors) for the full API.
 
 ## Call a connector
 
-Use `sdk.connectors.execute()` with the connector's permalink. The `method` parameter must match the HTTP method configured on the connector (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD`, or `OPTIONS`).
+Use `connectors.execute()` with the connector's permalink. The `method` parameter must match the HTTP method configured on the connector (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD`, or `OPTIONS`).
 
 A connector's permalink identifies a destination the community admin has already configured — including the target API and its credentials. Your widget code only references the permalink; it never chooses the destination or manages authentication for it.
-
-The examples below show code inside your widget's `init(sdk)` function.
 
 ### GET with query parameters
 
 ```javascript
-export async function init(sdk) {
-  try {
-    const data = await sdk.connectors.execute({
-      permalink: "weather-api",
-      method: "GET",
-      queryParams: {
-        q: "Warsaw"
-      }
-    });
-    console.log(data);
-  } catch (error) {
-    console.error("Connector request failed:", error);
-  }
+import { connectors } from "@gainsight-hub/sdk";
+
+try {
+  const data = await connectors.execute({
+    permalink: "weather-api",
+    method: "GET",
+    queryParams: {
+      q: "Warsaw"
+    }
+  });
+  console.log(data);
+} catch (error) {
+  console.error("Connector request failed:", error);
 }
 ```
 
 ### POST with JSON body
 
 ```javascript
-export async function init(sdk) {
-  try {
-    const result = await sdk.connectors.execute({
-      permalink: "plantbook",
-      method: "POST",
-      payload: { name: "Monstera", size: "M" }
-    });
-    console.log(result);
-  } catch (error) {
-    console.error("Connector request failed:", error);
-  }
+import { connectors } from "@gainsight-hub/sdk";
+
+try {
+  const result = await connectors.execute({
+    permalink: "plantbook",
+    method: "POST",
+    payload: { name: "Monstera", size: "M" }
+  });
+  console.log(result);
+} catch (error) {
+  console.error("Connector request failed:", error);
 }
 ```
 
@@ -8780,7 +8784,7 @@ export async function init(sdk) {
 The request body goes in the `payload` option as a plain JSON object. `body` is not a recognized option — and `execute()` silently ignores any option it does not recognize, so a call using `body` sends an empty request body.
 :::
 
-See more usage patterns in [Examples](/sdk/connectors-sdk/examples).
+See more usage patterns in [SDK Examples](/sdk/examples#connectors).
 
 ::: danger Never pass user identity from browser code
 Data sent from the browser — including `queryParams` and `payload` — can be modified by the user. Never pass user IDs, emails, or other identity data as SDK parameters. Instead, use server-side template variables like {{ user.id }} in the connector configuration. See [Passing User Context](passing-user-context) for the secure pattern.
@@ -8788,12 +8792,11 @@ Data sent from the browser — including `queryParams` and `payload` — can be 
 
 ## Common mistakes
 
-These patterns compile but fail at runtime or in production:
+These patterns compile but fail at runtime or in production.
 
 | Wrong | Why it fails |
 |-------|-------------|
-| `sdk.execute(...)` | `.execute` lives under `.connectors`, not on the `sdk` object. Throws `TypeError: sdk.execute is not a function`. Write `sdk.connectors.execute(...)`. |
-| `fetch("https://api.example.com/...")` | A raw `fetch()` to an external domain is blocked in production. The platform sets no explicit `connect-src` in its Content-Security-Policy, so `connect-src` falls back to `default-src 'self'` — same-origin requests only. Route every external call through `sdk.connectors.execute(...)` instead, which proxies the request server-side. |
+| `fetch("https://api.example.com/...")` | A raw `fetch()` to an external domain is blocked in production. The platform sets no explicit `connect-src` in its Content-Security-Policy, so `connect-src` falls back to `default-src 'self'` — same-origin requests only. Route every external call through `connectors.execute(...)` instead, which proxies the request server-side. |
 
 ## Working with the response
 
@@ -8801,7 +8804,7 @@ Widget code runs inside Shadow DOM. If you update the DOM after a connector call
 
 ## Next Steps
 
-* [Examples](/sdk/connectors-sdk/examples) — More usage patterns and advanced options
+* [SDK Examples](/sdk/examples#connectors) — More usage patterns and advanced options
 * [Passing User Context](passing-user-context) — Securely inject user identity into requests
 * [Testing & Debugging](testing-and-debugging) — Verify your connector works and diagnose issues
 * [Template Variables](template-variables) — Variables and functions available in templates
@@ -8838,16 +8841,16 @@ When a connector needs to know *who* the user is, set the value in the connector
 The browser controls `queryParams`, so a user can change the value to impersonate someone else.
 
 ```javascript
-export async function init(sdk) {
-  // Browser code — user can tamper with the ID
-  const data = await sdk.connectors.execute({
-    permalink: "user-profile-api",
-    method: "GET",
-    queryParams: {
-      user_id: currentUser.id  // attacker changes this in dev tools
-    }
-  });
-}
+// Browser code — user can tamper with the ID
+import { connectors } from "@gainsight-hub/sdk";
+
+const data = await connectors.execute({
+  permalink: "user-profile-api",
+  method: "GET",
+  queryParams: {
+    user_id: currentUser.id  // attacker changes this in dev tools
+  }
+});
 ```
 
 :::
@@ -8945,15 +8948,15 @@ A filter written in widget JavaScript only controls **what the widget renders**.
 ::: danger Wrong: filtering in widget code
 
 ```javascript
-export async function init(sdk) {
-  // The full response is already in the browser
-  const data = await sdk.connectors.execute({
-    permalink: "groups",
-    method: "GET"
-  });
-  const publicGroups = data.groups.filter(g => !g.hidden);
-  // data still contains every hidden group in the Network tab
-}
+// The full response is already in the browser
+import { connectors } from "@gainsight-hub/sdk";
+
+const data = await connectors.execute({
+  permalink: "groups",
+  method: "GET"
+});
+const publicGroups = data.groups.filter(g => !g.hidden);
+// data still contains every hidden group in the Network tab
 ```
 
 :::
@@ -9486,7 +9489,7 @@ For example, to feed both the request payload and a query parameter into a step'
 }
 ```
 
-Calling sdk.connectors.composite.execute({ permalink: "...", payload: { userId: "usr\_123" }, queryParams: { region: "eu" } }) sends this step's request with `userId=usr_123&region=eu`. The `if request.body_text else ''` guard avoids a template error when no payload is sent — parsing `None` with `from_json` raises an error. Reading a `request.query_parameters` value needs no such guard: a missing key simply renders blank.
+Calling connectors.composite.execute({ permalink: "...", payload: { userId: "usr\_123" }, queryParams: { region: "eu" } }) sends this step's request with `userId=usr_123&region=eu`. The `if request.body_text else ''` guard avoids a template error when no payload is sent — parsing `None` with `from_json` raises an error. Reading a `request.query_parameters` value needs no such guard: a missing key simply renders blank.
 
 ::: warning Different from regular connectors
 Regular connectors use `body_text` and `body_raw` directly in payload templates. Composite connectors use `request.body_text` and `request.body_raw` — the `request.` prefix distinguishes client data from step result data.
@@ -9494,19 +9497,19 @@ Regular connectors use `body_text` and `body_raw` directly in payload templates.
 
 ## Execute a composite connector
 
-To call a composite connector from widget code, use `sdk.connectors.composite.execute()`:
+To call a composite connector from widget code, use `connectors.composite.execute()`:
 
 ```html
 <script type="module">
-export async function init(sdk) {
-  try {
-    const data = await sdk.connectors.composite.execute({
-      permalink: "contact-orders"
-    });
-    console.log("Result:", data);
-  } catch (error) {
-    console.error("Connector request failed:", error);
-  }
+import { connectors } from "@gainsight-hub/sdk";
+
+try {
+  const data = await connectors.composite.execute({
+    permalink: "contact-orders"
+  });
+  console.log("Result:", data);
+} catch (error) {
+  console.error("Connector request failed:", error);
 }
 </script>
 ```
@@ -9514,24 +9517,24 @@ export async function init(sdk) {
 The HTTP method is always POST — it is not a configurable parameter. The SDK owns this detail so you do not need to specify it.
 
 ::: warning Path parameters are not supported on composite connectors
-`pathParams` is a simple-connector concept only. Passing `pathParams` to `sdk.connectors.composite.execute()` rejects — no request is sent. If you need per-call path values inside a composite flow, embed them in the step URLs using template variables from previous steps' results. See [Dynamic URL Path Segments](dynamic-url-paths) for the simple-connector pattern.
+`pathParams` is a simple-connector concept only. Passing `pathParams` to `connectors.composite.execute()` rejects — no request is sent. If you need per-call path values inside a composite flow, embed them in the step URLs using template variables from previous steps' results. See [Dynamic URL Path Segments](dynamic-url-paths) for the simple-connector pattern.
 :::
 
 To pass a request body, include the `payload` option as a plain object. The SDK handles serialisation. Use `queryParams` to append URL query parameters — these are available in step templates as `request.query_parameters.<key>`:
 
 ```html
 <script type="module">
-export async function init(sdk) {
-  try {
-    const data = await sdk.connectors.composite.execute({
-      permalink: "contact-orders",
-      payload: { userId: "usr_123" },
-      queryParams: { format: "json" }
-    });
-    console.log("Result:", data);
-  } catch (error) {
-    console.error("Connector request failed:", error);
-  }
+import { connectors } from "@gainsight-hub/sdk";
+
+try {
+  const data = await connectors.composite.execute({
+    permalink: "contact-orders",
+    payload: { userId: "usr_123" },
+    queryParams: { format: "json" }
+  });
+  console.log("Result:", data);
+} catch (error) {
+  console.error("Connector request failed:", error);
 }
 </script>
 ```
@@ -9634,7 +9637,7 @@ For the full list of Jinja2 filters and functions, see [Template Variables](temp
 
 ## SDK
 
-`sdk.connectors.composite.execute(options)` executes a composite connector from widget code and returns a Promise that resolves with the parsed response body.
+`connectors.composite.execute(options)` executes a composite connector from widget code and returns a Promise that resolves with the parsed response body.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -9646,22 +9649,22 @@ The HTTP method is always POST. It is not configurable by the caller — the SDK
 
 ```html
 <script type="module">
-export async function init(sdk) {
-  try {
-    const data = await sdk.connectors.composite.execute({
-      permalink: "auth-and-fetch-user",
-      payload: { userId: "usr_123" },
-      queryParams: { format: "json" }
-    });
-    console.log("Result:", data);
-  } catch (error) {
-    console.error("Connector request failed:", error);
-  }
+import { connectors } from "@gainsight-hub/sdk";
+
+try {
+  const data = await connectors.composite.execute({
+    permalink: "auth-and-fetch-user",
+    payload: { userId: "usr_123" },
+    queryParams: { format: "json" }
+  });
+  console.log("Result:", data);
+} catch (error) {
+  console.error("Connector request failed:", error);
 }
 </script>
 ```
 
-Errors (step 4xx/5xx, template errors, network errors) reject the returned Promise with an error object consistent with errors thrown by `sdk.connectors.execute()`.
+Errors (step 4xx/5xx, template errors, network errors) reject the returned Promise with an error object consistent with errors thrown by `connectors.execute()`.
 
 ## Response headers
 
@@ -9932,92 +9935,484 @@ An empty connectors array has the same effect:
 ---
 url: https://developer-portal.gainsight.com/docs/sdk.md
 description: >-
-  The sdk object passed to a widget's init(sdk) function — widget runtime,
-  Connectors SDK (sdk.connectors) and Web SDK (sdk.web)
+  The SDK in one import — connectors and web from @gainsight-hub/sdk for widgets
+  and sitewide scripts, plus the per-widget runtime on init(sdk); how the import
+  resolves and how to set up your project
 ---
 
 # SDK
 
-The SDK is the `sdk` object the platform passes to your widget's `init(sdk)` function. It carries the widget runtime plus two clients, and nothing needs to be constructed or loaded. Choose the part you need:
+Widgets and sitewide scripts get the SDK from one import:
+
+```js
+import { connectors, web } from "@gainsight-hub/sdk";
+```
+
+Import only what you use. The per-widget runtime is not part of the import: it stays on the `sdk` object the platform passes to your widget's `init(sdk)` function.
 
 | Part | Access | Purpose |
 |------|--------|---------|
-| **Runtime** | `sdk.getProps()`, `sdk.$()`, `sdk.on()` | The widget's shadow root, props, events, and design tokens — see the [Widget Runtime Reference](/sdk/runtime-reference). |
-| **Connectors** | `sdk.connectors` | Call [connectors](/connectors/) from widget code to reach external APIs — see the [Connectors SDK](/sdk/connectors-sdk/overview). |
-| **Web** | `sdk.web` | Search content, users, and subscriptions on community pages — see the [Web SDK](/sdk/web-sdk/overview). |
+| **Connectors** | `connectors` from the import | Call [connectors](/connectors/) to reach external APIs without exposing credentials in the browser — see [`connectors`](/sdk/reference#connectors) |
+| **Web** | `web` from the import | Search content, look up users, and manage subscriptions on community pages — see [`web`](/sdk/reference#web) |
+| **Runtime** | `whenReady`, `getProps`, `on`, `getContainer`, `shadowRoot`, `getDesignTokens`, and events on `init(sdk)` | The widget's shadow root, props, design tokens, and events — see [`init(sdk)` runtime](/sdk/reference#init-sdk-runtime) |
 
-New to widgets? Start with [Your First Widget](/custom-widgets/v2/build-first-widget). To call an external API from a widget, see [Calling from Widget Code](/connectors/calling-from-widgets). For how the three parts relate, read [SDK Concepts](/sdk/concepts).
+The runtime is per widget instance: each widget gets its own `sdk` object, the same way React hands a component its `props`. `connectors` and `web` are page-wide: every widget and sitewide script on the page shares them. A widget can use all three at once:
 
----
+```js
+import { connectors, web } from "@gainsight-hub/sdk";
 
----
-url: https://developer-portal.gainsight.com/docs/sdk/concepts.md
-description: >-
-  How the single sdk object passed to init(sdk) combines the widget runtime with
-  the sdk.connectors and sdk.web namespaces, and why each is a separate layer
----
-
-# SDK Concepts
-
-Your widget's `init(sdk)` function receives one `sdk` object. It is the single entry point to everything the platform offers widget code. This page explains what is on that object, why it is split into separate layers, and which page to go to for each.
-
-## One `sdk` object, three layers
-
-| | What it is | How you access it | What it's for |
-|---|---|---|---|
-| **[Widget Runtime Reference](/sdk/runtime-reference)** | The lifecycle contract — see [Widget Runtime](/custom-widgets/v2/core-concepts) for how it works | Directly on `sdk`, for example `sdk.getContainer()` and `sdk.getProps()` | Gives your widget its shadow root, current props, design tokens, and events |
-| **[Connectors SDK](/sdk/connectors-sdk/overview)** | A backend proxy client, shared by every widget on the page | `sdk.connectors` | Call [Connectors](/connectors/) to reach external APIs without exposing credentials in the browser |
-| **[Web SDK](/sdk/web-sdk/overview)** | The community-platform client | `sdk.web` — `undefined` on host pages that publish no Web SDK | Search content, manage users and subscriptions, and interact with the DOM on community pages |
-
-Nothing on `sdk` needs to be constructed or loaded: it already exists by the time your `init` function runs, the same way React hands a component its `props` or Express hands a handler `req`/`res`.
-
-`sdk.web` is `undefined` where the host page publishes no Web SDK — embedded widgets on non-community host pages, and Skilljar. Check it before use:
-
-```javascript
 export async function init(sdk) {
-  await sdk.whenReady()
-  if (!sdk.web) return // no Web SDK on this host page (e.g. embedded widgets, Skilljar)
-  // ...
+  await sdk.whenReady();
+  const { permalink } = sdk.getProps();
+  const orders = await connectors.execute({ permalink, method: "GET" });
+  const user = await web.Context.User();
+  sdk.getContainer().textContent = `${user.username}: ${JSON.stringify(orders)}`;
 }
 ```
 
-## Why they're kept separate
+## How the import resolves
 
-Each layer talks to something different, so collapsing them would mix unrelated concerns:
+The community page provides an import map that maps `@gainsight-hub/sdk` to the SDK. The community, not your widget, controls the version: one update reaches every widget and script on the page, and nothing you ship pins an old copy.
 
-* **`sdk.connectors`** is a backend proxy client. Calling an external API directly from the browser would expose your credentials, so this client exists purely to route requests through the platform instead, keeping credentials on the server. It is one client shared by every widget on the page, so configuration changes made through it apply to all of them.
-* **`sdk.web`** is a community-platform client. It has nothing to do with external APIs — it searches and manages content that already lives in the community itself.
-* **The runtime** (the rest of `sdk`) isn't a client for anything external. It's the contract between the platform and your widget's lifecycle: where to render, what configuration you were given, and what to do when that configuration changes.
+`web` uses the community's Web SDK and throws on pages without it. For a visitor who isn't signed in, `web.Context.User()` resolves a guest user whose `userId` is `null`:
 
-A widget can use all three at once — read its props from the runtime, call a connector through `sdk.connectors`, and search community content through `sdk.web` — without any of the three needing to know the others exist.
+```js
+const user = await web.Context.User();
+const signedIn = user.userId !== null;
+```
 
-## Older code: the window globals
+## Widgets: keep it external
 
-Earlier widget code reached these through globals: `new window.WidgetServiceSDK()` for connectors and `window.ChWebSdk` for the Web SDK. Both are deprecated. They still work, but use `sdk.connectors` and `sdk.web` from `init(sdk)` instead.
+Never bundle `@gainsight-hub/sdk` into a widget. A bundled copy is pinned in your widget and bypasses the version the community provides.
 
-The SDKs are available only through the `sdk` object your widget's `init(sdk)` receives. Script extensions and other page scripts have no SDK access — if you need community data or a connector, build a [widget](/custom-widgets/v2/build-first-widget).
+`gsds` 1.9.0 and later scaffold the package as a devDependency, for types only, and keep it external in `gsds build`. In a project set up by hand, install it and mark it external in your bundler:
 
-## What's Next
+```bash
+npm install -D @gainsight-hub/sdk
+```
 
-* [Your First Widget](/custom-widgets/v2/build-first-widget) — build a widget hands-on and see the `init(sdk)` parameter in action
-* [Connectors SDK](/sdk/connectors-sdk/overview) — call connectors with `sdk.connectors`
-* [Web SDK](/sdk/web-sdk/overview) — search, users, and subscriptions with `sdk.web`
-* [Widget Runtime Reference](/sdk/runtime-reference) — full API for the `init(sdk)` parameter
+```js
+// vite.config.js
+export default {
+  build: {
+    rollupOptions: {
+      external: ["@gainsight-hub/sdk"],
+    },
+  },
+};
+```
+
+`gsds preview` loads the installed package in the local dev server; calls still go to the community's Web SDK and the shared connectors client.
+
+## Sitewide scripts
+
+A bare module specifier only resolves in a module script, so a sitewide script that imports the SDK must be registered with `"attributes": {"type": "module"}`. `gsds script new` does this for you.
+
+```json
+{
+  "scripts": [
+    {
+      "name": "greeter",
+      "path": "scripts/greeter/script.js",
+      "placement": "head",
+      "attributes": { "type": "module" }
+    }
+  ]
+}
+```
+
+## Where to go next
+
+| You want to... | Go to |
+|----------------|-------|
+| Build your first widget | [Your First Widget](/custom-widgets/v2/build-first-widget) |
+| Call an external API from a widget | [Calling from Widget Code](/connectors/calling-from-widgets) |
+| Look up a method, option, or event | [SDK Reference](/sdk/reference) |
+| Copy a working snippet | [SDK Examples](/sdk/examples) |
+| Read the current viewer or other users | [User Context](/sdk/user-context) |
+| Understand the widget lifecycle | [Widget Runtime](/custom-widgets/v2/core-concepts) |
 
 ---
 
 ---
-url: https://developer-portal.gainsight.com/docs/sdk/runtime-reference.md
+url: https://developer-portal.gainsight.com/docs/sdk/reference.md
 description: >-
-  Properties, methods, and events on the sdk object passed to your widget's
-  init(sdk) function, including sdk.connectors and sdk.web
+  Complete reference for the SDK — the connectors and web clients imported from
+  @gainsight-hub/sdk, and the per-widget runtime on the init(sdk) object
 ---
 
-# Widget Runtime Reference
+# SDK Reference
 
-This page documents the `sdk` object the platform passes to your widget's `init(sdk)` function. It is the single SDK entry point for widget code: it carries the widget's runtime API plus the connectors client (`sdk.connectors`) and the community Web SDK (`sdk.web`).
+Every method, option, and event in the SDK: the [`connectors`](#connectors) and [`web`](#web) clients imported from `@gainsight-hub/sdk`, and the [`init(sdk)` runtime](#init-sdk-runtime) passed to each widget. See [SDK](/sdk/) for how the import resolves and how to set up your project.
 
-## Properties
+## `connectors`
+
+`connectors` calls [connectors](/connectors/) — the backend proxies that reach external APIs so credentials stay off the browser. It is one client shared by every widget on the page: per-request options such as `headers` affect only that call, but [`connectors.configure(...)`](#connectors-configure-config) changes the client for all widgets on the page.
+
+### Import
+
+```javascript
+import { connectors } from "@gainsight-hub/sdk";
+```
+
+### `connectors.configure(config)`
+
+Change client settings. The settings apply to every request made through `connectors`, across all widgets on the page. All options are optional.
+
+```javascript
+connectors.configure({
+  timeout: 15000,
+  headers: { "X-Custom-Header": "value" }
+});
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `headers` | `Record<string, string>` | `{}` | Headers included with every request, merged with any set earlier |
+| `timeout` | `number` | `30000` | Request timeout in milliseconds |
+| `csrfToken` | `string` | read from the page | CSRF token sent with every request |
+
+### `connectors.execute(options)`
+
+Execute a connector and return the response.
+
+```javascript
+const result = await connectors.execute({
+  permalink: "my-connector",
+  method: "POST",
+  payload: { name: "Monstera", size: "M" },
+  headers: { "X-Request-Id": "abc-123" },
+  queryParams: { format: "json" },
+  pathParams: { user_id: 42 }
+});
+```
+
+**Parameters**
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `permalink` | `string` | Yes | — | The connector's unique permalink identifier |
+| `method` | `"GET" \| "POST" \| "PUT" \| "PATCH" \| "DELETE" \| "HEAD" \| "OPTIONS"` | Yes | — | HTTP method |
+| `payload` | `Record<string, JsonValue>` | No | `undefined` | The request body, as a plain JSON object. Pass it via `payload` (not `body`). Only sent for `POST`, `PUT`, `PATCH` methods |
+| `queryParams` | `Record<string, string>` | No | `{}` | Query parameters appended to the request URL |
+| `pathParams` | `Record<string, string \| number>` | No | `{}` | Values substituted into {{ pathParams.X }} URL template references on the connector. See [Dynamic URL Path Segments](/connectors/dynamic-url-paths) |
+| `headers` | `Record<string, string>` | No | `{}` | Additional headers for this request |
+
+`JsonValue` covers strings, numbers, booleans, null, arrays, and nested objects.
+
+::: warning Pass the request body via `payload`, not `body`
+The request body goes in the `payload` option as a plain JSON object. `body` is not a recognized option — and `execute()` silently ignores any option it does not recognize, so a call using `body` sends an empty request body.
+:::
+
+**Returns** `Promise<Record<string, JsonValue>>`
+
+#### Path parameter validation
+
+`pathParams` is validated by the SDK before any network call. The returned promise rejects, and no request is sent, on:
+
+* An empty or whitespace-only key (e.g. `{ "": "x" }`)
+* A value whose type is not `string | number` — catches untyped JS callers passing `null`, `undefined`, booleans, objects, or arrays
+* A serialized header value over 4096 characters (gateway / CDN per-header limits typically sit around 8–16 KB; this cap leaves headroom)
+* Passing `pathParams` to `connectors.composite.execute` (composite connectors don't accept path parameters)
+
+Omitting `pathParams` or passing `{}` sends no header — the request goes out unchanged. See [Dynamic URL Path Segments — Validation and errors](/connectors/dynamic-url-paths#validation-and-errors) for the server-side error codes returned when validation passes the SDK but fails server-side.
+
+### Connector errors
+
+`execute` returns a promise that rejects when the call fails — a network error, a timeout, an invalid `pathParams` value, or an error response from the connector or the API behind it. Wrap calls in `try`/`catch` and read `error.message`:
+
+```javascript
+try {
+  const data = await connectors.execute({
+    permalink: "my-connector",
+    method: "GET",
+    pathParams: { user_id: 42 }
+  });
+  console.log(data);
+} catch (error) {
+  console.error("Connector request failed:", error.message);
+  // show a fallback in your widget
+}
+```
+
+For path-parameter errors returned by the server, `error.code` names the problem (`MISSING_PATH_PARAMETERS` or `INVALID_PATH_PARAMETERS`) — see [Dynamic URL Path Segments](/connectors/dynamic-url-paths#validation-and-errors).
+
+## `web`
+
+`web` searches content, manages users, and subscribes to topics and categories on community pages. It works in widgets and in sitewide scripts registered with `"type": "module"`, forwards to the community's Web SDK, and throws on pages that do not have it.
+
+`web` is **browser-only**: all methods that call the backend throw if run outside a browser environment.
+
+### DOM and lifecycle
+
+#### `loadScript(src, callback?)`
+
+Load an external script by URL. If the script is already present, calls `callback` when appropriate. Scripts are loaded with `async: true`.
+
+```javascript
+import { web } from "@gainsight-hub/sdk";
+
+web.loadScript('https://example.com/plugin.js', () => {
+  console.log('Script loaded')
+})
+```
+
+***
+
+### Content Methods
+
+The Content Methods provide typed access to internal community content APIs (articles, questions, conversations, ideas, product updates), search, and actions like like, unlike, vote, and unvote.
+
+#### Content types and instances
+
+Get a **content instance** for a specific type. Pass an optional **private topic ID** when you need to perform actions (like, unlike, vote, etc.) on a specific topic.
+
+| Method            | Description                    |
+|-------------------|--------------------------------|
+| `Content.Article(privateId?)`  | Knowledge base articles       |
+| `Content.Question(privateId?)` | Community questions           |
+| `Content.Conversation(privateId?)` | Conversations / discussions |
+| `Content.Idea(privateId?)`    | Ideation topics               |
+| `Content.ProductUpdate(privateId?)` | Product updates          |
+
+```javascript
+import { web } from "@gainsight-hub/sdk";
+
+// Search only ideas (no privateId needed)
+const ideaInstance = web.Content.Idea()
+const ideas = await ideaInstance.search('feature request', { limit: 10 })
+
+// Like a specific idea (privateId required)
+const idea = web.Content.Idea(12345)
+await idea.like()  // uses current logged-in user
+```
+
+#### Content instance methods
+
+When created **with** a `privateId`, an instance supports:
+
+| Method | Description |
+|--------|-------------|
+| `like(likedBy?)` | Like the topic. `likedBy` defaults to current user. |
+| `unlike(unlikedBy?)` | Unlike the topic. |
+| `vote(votedBy?)` | Vote (e.g. for ideas). |
+| `unvote(unvotedBy?)` | Remove vote. |
+| `likeReply(replyId, likedBy?)` | Like a reply. |
+| `unlikeReply(replyId, unlikedBy?)` | Unlike a reply. |
+| `search(query, options?)` | Search content of this type only. |
+
+All of these require a **browser environment** and, where applicable, a **logged-in user** (or an explicit user ID).
+
+#### `Content.search(query, options?)`
+
+Search **across all content types** (no content-type filter). Same options as the per-type search.
+
+```javascript
+import { web } from "@gainsight-hub/sdk";
+
+const results = await web.Content.search('help with login', {
+  limit: 20,
+  page: 0,
+  fetchMetadata: true
+})
+```
+
+#### Search options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `query` | `string` | — | Search query (required). Must be a non-empty string; an empty string is rejected. |
+| `contentType` | `string \| string[]` | — | Filter by type: `'idea'`, `'ideation'`, `'article'`, `'question'`, `'discussion'`, `'conversation'`, `'event'`, `'productUpdate'`. |
+| `limit` | `number` | `30` | Max results per page. |
+| `page` | `number` | `0` | Page index (0-based). |
+| `fetchMetadata` | `boolean` | `true` | When `true`, enriches results with author, engagement, and topic metadata from the backend. |
+| `categoryName` | `string` | — | Filter by community category name (top-level category). |
+| `categoryIds` | `number[]` | — | Filter by category/forum IDs. |
+| `kbCategoryName` | `string` | — | Filter by knowledge base category name. |
+| `productAreaName` | `string` | — | Filter by product area name. |
+
+Search has no sort option and no date filter. Results are returned in relevance order, so none of the options above can list the newest, most viewed, most replied, or most liked content. The filters only narrow the set of results.
+
+Only content the current visitor can see is returned, whatever filters you set.
+
+#### Search result shape
+
+Each result includes at least: `id`, `title`, `url`, `contentType`, `excerpt`, and optionally `views`, `likes`, `votes`. When `fetchMetadata: true`, additional fields such as `firstPost`, `forum`, `numberOfViews`, `numberOfReplies`, `numberOfLikes`, `hasCurrentUserLiked`, `ideationStatus`, `bugStatus`, etc. are populated. `firstPost` carries `author` (an object with `name`), `creationDate` (ISO 8601 timestamp) and `relativeCreationDate` (for example "1 year ago").
+
+***
+
+### Context Methods
+
+Access the current session context — who is viewing the page and their community profile.
+
+#### `Context.User()`
+
+Fetch the current user. Always returns a `User` object — a guest resolves to the **guest projection** (`userId: null`, `username: "guest"`), never `null`. This replaces reading `inSidedData.user`.
+
+**Browser-only.** Takes no parameters. For a signed-in visitor `badges` and `profileFields` are always present and `rank` is present when the user has one; the guest result has no `profileFields` or `rank`. No private account data (email, PM counts, login source) is ever returned. The response does include the viewer's own private profile fields, which any script on the page can read; see [User Context](/sdk/user-context#context-current-viewer).
+
+```javascript
+import { web } from "@gainsight-hub/sdk";
+
+const me = await web.Context.User()
+if (me.userId === null) {
+  // Guest — show login prompt
+} else {
+  console.log(me.username, me.rank?.name, me.badges)
+}
+```
+
+See [User Context](/sdk/user-context) for the complete reference — full User object schema, guest handling, field availability by method, and all examples.
+
+***
+
+### User Methods
+
+All User methods are **browser-only**.
+
+#### `User.search(query)`
+
+Search users by a query string. Returns a reduced field set optimized for mention/autocomplete UIs — use `User.list()` when you need the full user object.
+
+Requires a non-empty string `query`. Returns **up to 25 users** — this limit is fixed and there is no size parameter.
+
+```javascript
+import { web } from "@gainsight-hub/sdk";
+
+const results = await web.User.search('john')
+results.forEach((u) => console.log(u.userId, u.username, u.avatar))
+```
+
+#### `User.getUsersById(ids)`
+
+Batch-fetch up to 100 users by ID. Unresolved IDs are silently omitted — the result array may be shorter than the input.
+
+Numeric strings are accepted and coerced. Returns an array (not a map keyed by ID — iterate with `.find()` or build your own map).
+
+```javascript
+import { web } from "@gainsight-hub/sdk";
+
+const users = await web.User.getUsersById([101, 202, 303])
+const user = users.find((u) => u.userId === 101)
+```
+
+#### `User.getById(id)`
+
+Fetch a single user by ID. Returns `null` if the ID does not resolve.
+
+```javascript
+import { web } from "@gainsight-hub/sdk";
+
+const user = await web.User.getById(101)
+if (user) console.log(user.username)
+```
+
+#### `User.list(options?)`
+
+List and filter community members with pagination and sorting. Returns `{ totalItems, items }` — **defaults to 25 items per page (max 100)**.
+
+```javascript
+import { web } from "@gainsight-hub/sdk";
+
+const { totalItems, items } = await web.User.list({
+  role: [7],
+  sort: 'lastVisit',
+  order: 'desc',
+  size: 20
+})
+```
+
+Key options: `search`, `role`, `joinDate`, `lastActivity`, `topics`, `replies`, `points`, `page`, `size`, `sort`, `order`. See [User Context](/sdk/user-context#user-lookup-and-listing-methods) for the full options reference.
+
+#### `User.getRecentlyActive(limit?)`
+
+Returns users sorted by last visit descending. Convenience wrapper around `list()`.
+
+```javascript
+import { web } from "@gainsight-hub/sdk";
+
+const users = await web.User.getRecentlyActive(10)
+```
+
+#### `User.getByRole(role, options?)`
+
+List users that hold one or more roles. `role` is a single role ID or an array (OR semantics).
+
+```javascript
+import { web } from "@gainsight-hub/sdk";
+
+const { items } = await web.User.getByRole(7)
+const { items } = await web.User.getByRole([7, 9], { size: 50 })
+```
+
+#### User object shape
+
+All User methods except `search()` return the unified `User` model; `search()` returns a reduced `UserSearchResult`. A field with no value is omitted, not `null`, so read optional fields with `?.`. See [User Context](/sdk/user-context#user-object-shape) for every field and its type, and [Field Availability by Method](/sdk/user-context#field-availability-by-method) for which methods return which fields.
+
+***
+
+### Subscription Methods
+
+All subscription methods are **browser-only** and require valid identifiers.
+
+#### Topics
+
+| Method | Description |
+|--------|-------------|
+| `Subscription.subscribeToTopic(publicId)` | Subscribe to a topic by its **public** ID. |
+| `Subscription.unsubscribeFromTopic(publicId)` | Unsubscribe from a topic. |
+| `Subscription.getTopicSubscriptionStatus(publicId)` | Returns `true` if the current user is subscribed. |
+
+#### Categories
+
+| Method | Description |
+|--------|-------------|
+| `Subscription.subscribeToCategory(categoryId)` | Subscribe to a category (ID as string). |
+| `Subscription.unsubscribeFromCategory(categoryId)` | Unsubscribe from a category. |
+| `Subscription.getCategorySubscriptionStatus(categoryId)` | Returns `true` if the current user is subscribed to the category. |
+
+```javascript
+import { web } from "@gainsight-hub/sdk";
+
+await web.Subscription.subscribeToTopic('topic-123')
+const isSubscribed = await web.Subscription.getTopicSubscriptionStatus('topic-123')
+
+await web.Subscription.subscribeToCategory('42')
+const subscribedToCategory = await web.Subscription.getCategorySubscriptionStatus('42')
+```
+
+***
+
+### Web SDK errors
+
+SDK methods that call the backend or DOM throw on failure. Use try/catch and handle missing or invalid arguments.
+
+```javascript
+import { web } from "@gainsight-hub/sdk";
+
+try {
+  const users = await web.User.search('john')
+  console.log(users)
+} catch (err) {
+  console.error('User search failed:', err.message)
+}
+```
+
+Common cases:
+
+| Scenario | Cause |
+|----------|-------|
+| "can only be called in a browser environment" | Method was run in Node or an environment without `window`. |
+| "Search query is required" / "User IDs array is required" | Missing or invalid arguments. |
+| "privateId is required for this operation" | Content action (like, vote, etc.) was called on an instance created without a private ID. |
+| "User must be logged in or provide a userId" | Like/vote/unvote used without a logged-in user or explicit ID. |
+| HTTP/network errors | Backend request failed (e.g. subscription, search, user fetch). |
+
+## `init(sdk)` runtime
+
+The `sdk` instance the platform passes to your widget's `init(sdk)` function. It is the per-widget runtime: shadow root, props, design tokens, and events. `connectors` and `web` are not on this object; import them from `@gainsight-hub/sdk`.
+
+### Properties
 
 | Property      | Type         | Description                             |
 | ------------- | ------------ | --------------------------------------- |
@@ -10025,10 +10420,8 @@ This page documents the `sdk` object the platform passes to your widget's `init(
 | `shadowRoot`  | `ShadowRoot` | Alias for `root` — the same shadow root reference |
 | `document`    | `Document`   | Global document reference               |
 | `version`     | `string`     | SDK version (e.g. `"1.5.2"`)           |
-| `connectors`  | Connectors client | The connectors client, shared by every widget on the page (`configure()` affects all of them). See [Connectors SDK](/sdk/connectors-sdk/overview) |
-| `web`         | Web SDK | `undefined` | The community Web SDK. `undefined` where the host page has none (embedded widgets on external sites, Skilljar). See [Web SDK](/sdk/web-sdk/overview) |
 
-## Methods
+### Methods
 
 | Method               | Returns          | Description                                    |
 | -------------------- | ---------------- | ---------------------------------------------- |
@@ -10044,7 +10437,7 @@ This page documents the `sdk` object the platform passes to your widget's `init(
 | `off(event, handler)`| `void`           | Unsubscribe from an event                      |
 | `emit(event, data?)` | `void`           | Emit an event to this widget's own `on()` listeners|
 
-## Built-in Events
+### Built-in Events
 
 | Event                 | Payload                              | Trigger                              |
 | --------------------- | ------------------------------------ | ------------------------------------ |
@@ -10055,346 +10448,182 @@ This page documents the `sdk` object the platform passes to your widget's `init(
 
 ## Next Steps
 
-* [Widget Runtime](/custom-widgets/v2/core-concepts) — Runtime model, lifecycle, props, and design tokens
-* [Configurable Widgets](/custom-widgets/v2/configurable-widgets) — Let editors customize your widget via a form in the **No-Code Builder**
-* [Using React](/custom-widgets/v2/using-react) — Build widgets with React
-* [SDK Concepts](/sdk/concepts) — How the runtime, `sdk.connectors` and `sdk.web` relate
+* [SDK Examples](/sdk/examples) — runnable code for connectors, search, subscriptions, and users
+* [User Context](/sdk/user-context) — complete reference for `Context.User()`, all User methods, and the User object schema
+* [Calling from Widget Code](/connectors/calling-from-widgets) — how to call connectors from a widget
+* [Widget Runtime](/custom-widgets/v2/core-concepts) — runtime model, lifecycle, props, and design tokens
+* [Configurable Widgets](/custom-widgets/v2/configurable-widgets) — let editors customize your widget via a form in the **No-Code Builder**
+* [Using React](/custom-widgets/v2/using-react) — build widgets with React
+* [Rendering & DOM](/custom-widgets/v2/rendering-and-dom) — Shadow DOM context for DOM manipulation
 
 ---
 
 ---
-url: https://developer-portal.gainsight.com/docs/sdk/connectors-sdk/overview.md
+url: https://developer-portal.gainsight.com/docs/sdk/examples.md
 description: >-
-  JavaScript client for calling connectors from widgets — reached as
-  sdk.connectors on the sdk object passed to init(sdk)
+  Runnable code examples for the SDK — connector GET, POST, PUT, and DELETE
+  requests, headers and timeouts, and Web SDK search, subscriptions, users, and
+  script loading
 ---
 
-# Connectors SDK
+# SDK Examples
 
-The Connectors SDK is a JavaScript client your widget code uses to call [connectors](/connectors/) — the secure backend proxies that connect widgets to external APIs. Calling an external API directly from the browser would expose your credentials, so the SDK exists to route each request through the platform instead, keeping those credentials on the backend.
-
-It is available as `sdk.connectors` on the `sdk` object the platform passes to your widget's `init(sdk)` function. Nothing needs to be constructed or loaded — call a connector by its [permalink](/connectors/configuration):
-
-```javascript
-export async function init(sdk) {
-  const data = await sdk.connectors.execute({
-    permalink: "weather-api",
-    method: "GET",
-    queryParams: { q: "Warsaw" }
-  });
-
-  console.log(data);
-}
-```
-
-For a task walkthrough, see [Calling from Widget Code](/connectors/calling-from-widgets).
-
-See [SDK Concepts](/sdk/concepts) for how `sdk.connectors` relates to the rest of the `sdk` object, or the [Widget Runtime Reference](/sdk/runtime-reference) for the runtime API.
-
-`sdk.connectors` is one client shared by every widget on the page. Per-request options such as `headers` affect only that call, but `sdk.connectors.configure(...)` changes the client for all widgets on the page — see `configure` in the [Reference](reference#configure).
-
-::: warning Deprecated: `window.WidgetServiceSDK`
-Constructing `new window.WidgetServiceSDK()` still works, but is no longer recommended. Use `sdk.connectors` from your widget's `init(sdk)` function instead.
-:::
-
-## Migrating from `window.WidgetServiceSDK`
-
-| Before | After |
-|--------|-------|
-| `new window.WidgetServiceSDK()` then `sdk.connectors.execute(...)` | `sdk.connectors.execute(...)` |
-| Constructor `headers` option | Per-request `headers` on `execute`, or `sdk.connectors.configure({ headers })` (applies to every widget on the page) |
-| Constructor `csrfToken` option | `sdk.connectors.configure({ csrfToken })` (page-wide; normally read from the page automatically) |
-| Constructor `timeout` option | `sdk.connectors.configure({ timeout })` or `sdk.connectors.setDefaultTimeout(ms)` (applies to every widget on the page) |
-
-## Next Steps
-
-* [Reference](reference) — full method signatures and error handling
-* [Examples](examples) — real-world usage patterns
-* [Configuration](/connectors/configuration) — set up connectors to call with the SDK
-
----
-
----
-url: https://developer-portal.gainsight.com/docs/sdk/connectors-sdk/reference.md
-description: >-
-  Complete API reference for the Connectors SDK (sdk.connectors) — access,
-  configure(), execute() method, and error handling
----
-
-# Reference
-
-Complete reference for accessing `sdk.connectors`, its `configure` method, the `execute` method, and error behavior.
-
-## Access
-
-The Connectors SDK is the `connectors` property of the `sdk` object passed to your widget's `init(sdk)` function. Nothing needs to be constructed:
-
-```javascript
-export async function init(sdk) {
-  const data = await sdk.connectors.execute({ permalink: "my-connector", method: "GET" });
-}
-```
-
-`sdk.connectors` is one client shared by every widget on the page.
-
-## `configure(options)` {#configure}
-
-Change client defaults. Accepts a partial object of `csrfToken`, `headers`, and `timeout`:
-
-```javascript
-sdk.connectors.configure({
-  timeout: 15000,
-  headers: { "X-Custom-Header": "value" }
-});
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `csrfToken` | `string` | Read from the page | CSRF token sent with requests; normally read from the page automatically |
-| `headers` | `Record<string, string>` | `Content-Type` and `Accept` set to `application/json`; `configure` merges into them | Headers included with every request. Per-request `headers` on `execute` are merged on top for that call |
-| `timeout` | `number` | `30000` | Request timeout in milliseconds |
-
-::: warning Applies to every widget on the page
-`sdk.connectors` is a single client shared by all widgets on the page, so `configure(...)` from one widget changes headers and timeout for all of them. Prefer per-request `headers` on `execute` when only one call needs them. `execute` takes no per-request timeout.
-:::
-
-Related methods on the same client: `updateHeaders(headers)`, `setDefaultTimeout(ms)`, `getHeaders()`, `getDefaultTimeout()`, `getBaseUrl()`.
-
-## Constructor (deprecated) {#constructor}
-
-::: warning Deprecated: `window.WidgetServiceSDK`
-Constructing `new window.WidgetServiceSDK(config)` still works, but is no longer recommended. Use `sdk.connectors` from your widget's `init(sdk)` function instead.
-:::
-
-The old constructor took the same `headers` and `timeout` options as [`configure`](#configure). Instances built this way are separate from `sdk.connectors`:
-
-```javascript
-const sdk = new window.WidgetServiceSDK({
-  timeout: 15000,
-  headers: { "X-Custom-Header": "value" }
-});
-```
-
-## `sdk.connectors.execute(options)`
-
-Execute a connector and return the response.
-
-```javascript
-const result = await sdk.connectors.execute({
-  permalink: "my-connector",
-  method: "POST",
-  payload: { name: "Monstera", size: "M" },
-  headers: { "X-Request-Id": "abc-123" },
-  queryParams: { format: "json" },
-  pathParams: { user_id: 42 }
-});
-```
-
-**Parameters**
-
-| Parameter | Type | Required | Default | Description |
-|-----------|------|----------|---------|-------------|
-| `permalink` | `string` | Yes | — | The connector's unique permalink identifier |
-| `method` | `"GET" \| "POST" \| "PUT" \| "PATCH" \| "DELETE" \| "HEAD" \| "OPTIONS"` | Yes | — | HTTP method. Must match the method configured on the connector; a mismatch is rejected with HTTP 400 (METHOD\_NOT\_ALLOWED) |
-| `payload` | `Record<string, JsonValue>` | No | `undefined` | The request body, as a plain JSON object. Pass it via `payload` (not `body`). Only sent for `POST`, `PUT`, `PATCH` methods |
-| `queryParams` | `Record<string, string>` | No | `{}` | Query parameters appended to the request URL |
-| `pathParams` | `Record<string, string \| number>` | No | `{}` | Values substituted into {{ pathParams.X }} URL template references on the connector. See [Dynamic URL Path Segments](/connectors/dynamic-url-paths) |
-| `headers` | `Record<string, string>` | No | `{}` | Additional headers for this request |
-
-`JsonValue` covers strings, numbers, booleans, null, arrays, and nested objects.
-
-::: warning Pass the request body via `payload`, not `body`
-The request body goes in the `payload` option as a plain JSON object. `body` is not a recognized option — and `execute()` silently ignores any option it does not recognize, so a call using `body` sends an empty request body.
-:::
-
-**Returns** `Promise` resolving to the parsed JSON response body (an object or an array). Rejects if the response body is not JSON, including an empty body.
-
-### Path parameter validation
-
-`pathParams` is validated by the SDK before any network call. The returned promise rejects, and no request is sent, on:
-
-* An empty or whitespace-only key (e.g. `{ "": "x" }`)
-* A value whose type is not `string | number` — catches untyped JS callers passing `null`, `undefined`, booleans, objects, or arrays
-* A serialized header value over 4096 characters (gateway / CDN per-header limits typically sit around 8–16 KB; this cap leaves headroom)
-* Passing `pathParams` to `sdk.connectors.composite.execute` (composite connectors don't accept path parameters)
-
-Omitting `pathParams` or passing `{}` sends no header — the request goes out unchanged. See [Dynamic URL Path Segments — Validation and errors](/connectors/dynamic-url-paths#validation-and-errors) for the server-side error codes returned when validation passes the SDK but fails server-side.
-
-## Error handling
-
-`execute` returns a promise that rejects when the call fails — a network error, a timeout, an invalid `pathParams` value, or an error response from the connector or the API behind it. Wrap calls in `try`/`catch` and read `error.message`:
-
-```javascript
-try {
-  const data = await sdk.connectors.execute({
-    permalink: "my-connector",
-    method: "GET",
-    pathParams: { user_id: 42 }
-  });
-  console.log(data);
-} catch (error) {
-  console.error("Connector request failed:", error.message);
-  // show a fallback in your widget
-}
-```
-
-For path-parameter errors returned by the server, `error.code` names the problem (`MISSING_PATH_PARAMETERS` or `INVALID_PATH_PARAMETERS`) — see [Dynamic URL Path Segments](/connectors/dynamic-url-paths#validation-and-errors).
-
-## Next Steps
-
-* [Examples](examples) — See real-world usage patterns with error handling
-* [Calling from Widget Code](/connectors/calling-from-widgets) — How to call connectors using the SDK
-* [Rendering & DOM](/custom-widgets/v2/rendering-and-dom) — Understand Shadow DOM context for DOM manipulation
-
----
-
----
-url: https://developer-portal.gainsight.com/docs/sdk/connectors-sdk/examples.md
-description: >-
-  Code examples for common sdk.connectors usage patterns — GET, POST, PUT, and
-  DELETE requests, custom headers, and request timeouts
----
-
-# Examples
-
-Ready-to-use code examples for common widget patterns using the Connectors SDK. Each example shows a complete, self-contained call to `connectors.execute` that you can copy and adapt.
+Ready-to-use snippets for common SDK tasks. Each example is self-contained — copy it into your widget or sitewide script and adapt it.
 
 ::: info Prerequisites
-Each example runs inside your widget's `init(sdk)` function, where `sdk.connectors` is available without any setup. See [Connectors SDK](overview) for an introduction.
+These examples run in a widget, or in a sitewide script registered with `"type": "module"`, on a community page. Each imports `connectors` or `web` from `@gainsight-hub/sdk` — see [SDK](/sdk/) for setup and [SDK Reference](/sdk/reference) for every method and option.
 :::
 
-## GET request with query parameters
+## Connectors
+
+### GET request with query parameters
 
 Fetch weather data by passing query parameters to the connector:
 
 ```javascript
-export async function init(sdk) {
-  const weather = await sdk.connectors.execute({
-    permalink: "weather-api",
-    method: "GET",
-    queryParams: {
-      q: "Warsaw",
-      units: "metric"
-    }
-  });
+import { connectors } from "@gainsight-hub/sdk";
 
-  console.log(weather);
-}
+const weather = await connectors.execute({
+  permalink: "weather-api",
+  method: "GET",
+  queryParams: {
+    q: "Warsaw",
+    units: "metric"
+  }
+});
+
+console.log(weather);
 ```
 
-## POST request with JSON body
+### POST request with JSON body
 
 Create a resource by sending a JSON payload:
 
 ```javascript
-export async function init(sdk) {
-  const result = await sdk.connectors.execute({
-    permalink: "crm-contacts",
-    method: "POST",
-    payload: {
-      firstName: "Jane",
-      lastName: "Doe",
-      email: "jane@example.com"
-    }
-  });
+import { connectors } from "@gainsight-hub/sdk";
 
-  console.log(result);
-}
+const result = await connectors.execute({
+  permalink: "crm-contacts",
+  method: "POST",
+  payload: {
+    firstName: "Jane",
+    lastName: "Doe",
+    email: "jane@example.com"
+  }
+});
+
+console.log(result);
 ```
 
-## PUT request to update a resource
+### PUT request to update a resource
 
 Update an existing resource by its identifier:
 
 ```javascript
-export async function init(sdk) {
-  const updated = await sdk.connectors.execute({
-    permalink: "crm-contacts",
-    method: "PUT",
-    queryParams: { id: "contact-42" },
-    payload: {
-      firstName: "Jane",
-      lastName: "Smith"
-    }
-  });
+import { connectors } from "@gainsight-hub/sdk";
 
-  console.log(updated);
-}
+const updated = await connectors.execute({
+  permalink: "crm-contacts",
+  method: "PUT",
+  queryParams: { id: "contact-42" },
+  payload: {
+    firstName: "Jane",
+    lastName: "Smith"
+  }
+});
+
+console.log(updated);
 ```
 
-## DELETE request
+### DELETE request
 
 Remove a resource using DELETE:
 
 ```javascript
-export async function init(sdk) {
-  await sdk.connectors.execute({
-    permalink: "task-manager",
-    method: "DELETE",
-    queryParams: { taskId: "task-99" }
-  });
-}
+import { connectors } from "@gainsight-hub/sdk";
+
+await connectors.execute({
+  permalink: "task-manager",
+  method: "DELETE",
+  queryParams: { taskId: "task-99" }
+});
 ```
 
-## Custom headers per request
+### Custom headers per request
 
-Pass additional headers for a single request without affecting the shared client configuration:
+Pass additional headers for a single request without changing the client configuration:
 
 ```javascript
-export async function init(sdk) {
-  const data = await sdk.connectors.execute({
-    permalink: "internal-api",
-    method: "GET",
-    headers: {
-      "X-Request-Id": crypto.randomUUID(),
-      "Accept-Language": "en-US"
-    }
-  });
-}
+import { connectors } from "@gainsight-hub/sdk";
+
+const data = await connectors.execute({
+  permalink: "internal-api",
+  method: "GET",
+  headers: {
+    "X-Request-Id": crypto.randomUUID(),
+    "Accept-Language": "en-US"
+  }
+});
 ```
 
-## Page-wide headers and timeout
+### Global headers with `configure`
 
-Set headers or a timeout for every request made through `sdk.connectors`:
+Set headers that apply to every request made through `connectors`:
 
 ```javascript
-export async function init(sdk) {
-  sdk.connectors.configure({
-    headers: { "X-App-Version": "2.1.0" },
-    timeout: 60000
-  });
+import { connectors } from "@gainsight-hub/sdk";
 
-  const report = await sdk.connectors.execute({
-    permalink: "report-generator",
-    method: "POST",
-    payload: { range: "last-90-days" }
-  });
-}
+connectors.configure({
+  headers: {
+    "X-App-Version": "2.1.0",
+    "X-Client": "custom-widget"
+  }
+});
+
+const data = await connectors.execute({
+  permalink: "analytics-api",
+  method: "GET"
+});
 ```
 
-::: warning Applies to every widget on the page
-`sdk.connectors` is one client shared by all widgets on the page, so `configure(...)` changes headers and timeout for every widget, not just yours. Prefer per-request `headers` when only one call needs them. `execute` takes no per-request timeout.
-:::
+### Custom timeout
 
-## Handling errors with a styled fallback
-
-Wrap `execute` calls in `try`/`catch` and render a small, styled fallback using design tokens so the widget degrades gracefully instead of showing an empty container. This example also uses the widget runtime (`sdk.whenReady()`, `sdk.$()`) alongside `sdk.connectors`, and assumes your widget HTML contains `<div class="status">Loading…</div>`:
+Override the default 30-second timeout for long-running requests. `configure` applies to every widget on the page:
 
 ```javascript
+import { connectors } from "@gainsight-hub/sdk";
+
+connectors.configure({ timeout: 60000 });
+
+const report = await connectors.execute({
+  permalink: "report-generator",
+  method: "POST",
+  payload: { range: "last-90-days" }
+});
+```
+
+### Handling errors with a styled fallback
+
+Wrap `execute` calls in `try`/`catch` and render a small, styled fallback using design tokens so the widget degrades gracefully instead of showing an empty container. This example lives inside `init(sdk)`:
+
+```javascript
+import { connectors } from "@gainsight-hub/sdk"
+
 export async function init(sdk) {
   await sdk.whenReady()
 
+  const container = sdk.getContainer()
+  container.innerHTML = `<div class="status">Loading…</div>`
   const status = sdk.$('.status')
-  status.textContent = "Loading…"
 
   try {
-    const data = await sdk.connectors.execute({
+    const data = await connectors.execute({
       permalink: "weather-api",
       method: "GET",
       queryParams: { q: "Warsaw" }
     })
 
-    status.textContent = `${data.location.name}: ${data.current.temp_c}°C`
+    status.textContent = `${data.city}: ${data.temperature}°C`
   } catch (error) {
     status.textContent = "Couldn't load weather data right now."
     status.style.color = "var(--color-content-subtle, #4F5663)"
@@ -10405,359 +10634,149 @@ export async function init(sdk) {
 
 A plain-text fallback styled with the community's own design tokens reads as an intentional state, not a broken widget. See [Design Tokens Reference](/custom-widgets/v2/design-tokens-reference) for the full design-token catalog.
 
-## Next Steps
+## Web SDK
 
-* [Reference](reference) — Full SDK method signatures and error handling
-* [Testing & Debugging](/connectors/testing-and-debugging) — Verify your Connector setup works
-* [Configuration](/connectors/configuration) — Set up the connector your widget calls
-* [Widgets repository template](https://github.com/gainsight-hub/widgets-repository-template/tree/main/widgets) — Working examples calling connectors
-
----
-
----
-url: https://developer-portal.gainsight.com/docs/sdk/web-sdk/overview.md
-description: >-
-  Overview of the Community Hub Web SDK (sdk.web) — the browser-side JavaScript
-  API for searching content, managing users, and subscribing to topics from
-  community pages.
----
-
-# Web SDK
-
-The **Community Hub Web SDK** is a JavaScript API exposed on community pages. It lets you search content, manage users, subscribe to topics and categories, and load scripts from custom widgets running in the community frontend. You reach it as `sdk.web` on the `sdk` object your widget's `init(sdk)` receives.
-
-The SDK is **browser-only**.
-
-## Availability
-
-The SDK is bundled with the community frontend. There is no separate npm package.
-
-Read it from `sdk.web` on the object passed to your widget's `init(sdk)` function. `sdk.web` is `undefined` on host pages that do not load the community frontend, such as embedded widgets on external sites and Skilljar, so check it before use. The SDKs are available only through the `sdk` object your widget's `init(sdk)` receives. Script extensions and other page scripts have no SDK access — if you need community data or a connector, build a [widget](/custom-widgets/v2/build-first-widget).
+### Search ideas and show titles
 
 ```javascript
-export async function init(sdk) {
-  await sdk.whenReady()
-  if (!sdk.web) return // no Web SDK on this host page (e.g. embedded widgets, Skilljar)
-  console.log('Web SDK available')
-}
+import { web } from "@gainsight-hub/sdk";
+
+const ideaInstance = web.Content.Idea()
+const results = await ideaInstance.search('dashboard', { limit: 5 })
+results.forEach((r) => console.log(r.title, r.url))
 ```
 
-::: warning Deprecated: `window.ChWebSdk`
-`window.ChWebSdk` still works, but is no longer supported for new code. Use `sdk.web` from your widget's `init(sdk)` function instead. `sdk.web` has the same namespaces and methods.
-:::
-
-| Before | After |
-|----------------------|-------|
-| `ChWebSdk.onReady(() => { ... })` | Not needed — put the code directly in `init(sdk)` after `await sdk.whenReady()` |
-| `ChWebSdk.observeElement(...)` / `ChWebSdk.onEvent(...)` | Not available in widgets — query your widget's own markup with `sdk.$()` and attach listeners to those elements |
-| `ChWebSdk.loadStyle(...)` | Not available — put styles in your widget's own CSS |
-| `ChWebSdk.loadScript(...)` | `sdk.web.loadScript(...)` |
-| `ChWebSdk.Content.search(...)` | `sdk.web.Content.search(...)` |
-| `ChWebSdk.Context.User()` | `sdk.web.Context.User()` |
-| `ChWebSdk.User.list(...)` | `sdk.web.User.list(...)` |
-| `ChWebSdk.Subscription.subscribeToTopic(...)` | `sdk.web.Subscription.subscribeToTopic(...)` |
-
-## Quick start
+### Search with filters and pagination
 
 ```javascript
-export async function init(sdk) {
-  await sdk.whenReady()
-  if (!sdk.web) return // no Web SDK on this host page (e.g. embedded widgets, Skilljar)
-  const results = await sdk.web.Content.search('feature request', { limit: 10 })
-  console.log(results)
-}
-```
+import { web } from "@gainsight-hub/sdk";
 
-See [Examples](examples) for more runnable snippets covering search, subscriptions, users, and script loading.
-
-## Summary
-
-* [Loading scripts](methods-constructors#loading-scripts) — load an external script by URL
-* [Content Methods](methods-constructors#content-methods) — search, like, vote, and manage articles, questions, ideas, and more
-* [Context Methods](methods-constructors#context-methods) — fetch the current viewer's user object (replaces `inSidedData.user`)
-* [User Methods](methods-constructors#user-methods) — look up, search, list, and filter community members
-* [Subscription Methods](methods-constructors#subscription-methods) — subscribe to topics and categories
-
-## Next Steps
-
-* [User Context](user-context) — complete reference for `Context.User()`, all User methods, the User object schema, field availability, and examples
-* [Reference](methods-constructors) — Loading scripts, Content, User, Subscription, search options, types, and error handling
-* [Examples](examples) — search, subscriptions, users, and script loading
-
----
-
----
-url: >-
-  https://developer-portal.gainsight.com/docs/sdk/web-sdk/methods-constructors.md
-description: >-
-  Complete API reference for the Community Hub Web SDK — Loading scripts,
-  Content, User, Subscription methods, search options, and error handling.
----
-
-# Reference
-
-Full reference for every method, option, and return type exposed by the Web SDK object (`sdk.web`) on community pages.
-
-::: info
-Examples assume widget code inside your widget's `init(sdk)` function, after checking that `sdk.web` is defined. See [Web SDK](overview).
-:::
-
-## Loading scripts
-
-### `loadScript(src, callback?)`
-
-Load an external script by URL. If the script is already present, calls `callback` when appropriate. Scripts are loaded with `async: true`.
-
-```javascript
-sdk.web.loadScript('https://example.com/plugin.js', () => {
-  console.log('Script loaded')
-})
-```
-
-***
-
-## Content Methods
-
-The Content Methods provide typed access to internal community content APIs (articles, questions, conversations, ideas, product updates), search, and actions like like, unlike, vote, and unvote.
-
-### Content types and instances
-
-Get a **content instance** for a specific type. Pass an optional **private topic ID** when you need to perform actions (like, unlike, vote, etc.) on a specific topic.
-
-| Method            | Description                    |
-|-------------------|--------------------------------|
-| `Content.Article(privateId?)`  | Knowledge base articles       |
-| `Content.Question(privateId?)` | Community questions           |
-| `Content.Conversation(privateId?)` | Conversations / discussions |
-| `Content.Idea(privateId?)`    | Ideation topics               |
-| `Content.ProductUpdate(privateId?)` | Product updates          |
-
-```javascript
-// Search only ideas (no privateId needed)
-const ideaInstance = sdk.web.Content.Idea()
-const ideas = await ideaInstance.search('feature request', { limit: 10 })
-
-// Like a specific idea (privateId required)
-const idea = sdk.web.Content.Idea(12345)
-await idea.like()  // uses current logged-in user
-```
-
-### Content instance methods
-
-An instance supports these methods. `like`, `unlike`, `vote` and `unvote` need the instance to be created **with** a `privateId`:
-
-| Method | Description |
-|--------|-------------|
-| `like(likedBy?)` | Like the topic. `likedBy` defaults to current user. |
-| `unlike(unlikedBy?)` | Unlike the topic. |
-| `vote(votedBy?)` | Vote (e.g. for ideas). |
-| `unvote(unvotedBy?)` | Remove vote. |
-| `likeReply(replyId, likedBy?)` | Like a reply. No `privateId` needed, only a logged-in user. |
-| `unlikeReply(replyId, unlikedBy?)` | Unlike a reply. No `privateId` needed, only a logged-in user. |
-| `search(query, options?)` | Search content of this type only. |
-
-All of these require a **browser environment** and, where applicable, a **logged-in user** (or an explicit user ID).
-
-### `Content.search(query, options?)`
-
-Search **across all content types** (no content-type filter). Same options as the per-type search.
-
-```javascript
-const results = await sdk.web.Content.search('help with login', {
+const results = await web.Content.search('bug', {
+  contentType: ['idea', 'question'],
+  categoryName: 'Ideas',
   limit: 20,
-  page: 0,
+  page: 1,
   fetchMetadata: true
 })
+console.log(results)
 ```
 
-### Search options
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `limit` | `number` | `30` | Max results per page. |
-| `page` | `number` | `0` | Page index (0-based). |
-| `fetchMetadata` | `boolean` | `true` | When `true`, enriches results with author, engagement, and topic metadata from the backend. |
-| `categoryName` | `string` | — | Filter by community category name (top-level category). |
-| `categoryIds` | `number[]` | — | Filter by category/forum IDs. |
-| `kbCategoryName` | `string` | — | Filter by knowledge base category name. |
-| `productAreaName` | `string` | — | Filter by product area name. |
-| `contentType` | `string[]` | all types | Content types to include, e.g. `['idea', 'question']`. On a typed instance (`Content.Idea().search`) it overrides the instance's type. |
-| `facetFilters` | `string[][]` | — | Raw facet filters, for example `[['categories.lvl1:Ideas > Feature Requests']]` for a sub-category. Values in one inner array are ORed; the inner arrays are ANDed. |
-
-The query is the first argument (a non-empty string; an empty string is rejected).
-
-Search has no sort option and no date filter. Results are returned in relevance order, so none of the options above can list the newest, most viewed, most replied, or most liked content. The filters only narrow the set of results.
-
-Only content the current visitor can see is returned, whatever filters you set.
-
-### Search result shape
-
-Each result includes at least: `id`, `title`, `url`, `contentType`, `excerpt`, and optionally `views`, `likes`, `votes`. When `fetchMetadata: true`, additional fields such as `firstPost`, `forum`, `numberOfViews`, `numberOfReplies`, `numberOfLikes`, `hasCurrentUserLiked`, `ideationStatus`, `bugStatus`, etc. are populated. `firstPost` carries `author` (an object with `name`), `creationDate` (ISO 8601 timestamp) and `relativeCreationDate` (for example "1 year ago").
-
-***
-
-## Context Methods
-
-Access the current session context — who is viewing the page and their community profile.
-
-### `Context.User()`
-
-Fetch the current user. Always returns a `User` object — a guest resolves to the **guest projection** (`userId: null`, `username: "guest"`), never `null`. This replaces reading `inSidedData.user`.
-
-**Browser-only.** Accepts an optional `{ include }` that the backend currently ignores — call it with no arguments. For a signed-in visitor `badges` and `profileFields` are always present and `rank` is present when the user has one; the guest result has no `profileFields` or `rank`. No private account data (email, PM counts, login source) is ever returned. The response does include the viewer's own private profile fields, which any script on the page can read; see [User Context](user-context#context-current-viewer).
+### Like an idea (logged-in user)
 
 ```javascript
-const me = await sdk.web.Context.User()
+import { web } from "@gainsight-hub/sdk";
+
+const idea = web.Content.Idea(98765)
+await idea.like()
+```
+
+### Subscribe to a topic and check status
+
+```javascript
+import { web } from "@gainsight-hub/sdk";
+
+await web.Subscription.subscribeToTopic('topic-abc')
+const isSubscribed = await web.Subscription.getTopicSubscriptionStatus('topic-abc')
+console.log(isSubscribed) // true
+```
+
+### Get the current user (viewer context)
+
+```javascript
+import { web } from "@gainsight-hub/sdk";
+
+const me = await web.Context.User()
+
 if (me.userId === null) {
-  // Guest — show login prompt
-  return
+  // Guest — show login prompt or public-only content
+  console.log('Not logged in')
+} else {
+  // Authenticated viewer
+  console.log(me.username)     // 'janedoe'
+  console.log(me.userId)       // 101
+  console.log(me.rank?.name)   // 'Regular'
+  console.log(me.badges)       // [{ id: 100, title: 'First post', url: 'https://assets.example.com/…_thumb.png' }]
 }
-console.log(me.username, me.rank?.name, me.badges)
 ```
 
-See [User Context](user-context) for the complete reference — full User object schema, guest projection, field availability by method, and all examples.
-
-***
-
-## User Methods
-
-All User methods are **browser-only**.
-
-### `User.search(query)`
-
-Search users by a query string. Returns a reduced field set optimized for mention/autocomplete UIs — use `User.list()` when you need the full user object.
-
-Requires a non-empty string `query`. Returns **up to 25 users** — this limit is fixed and there is no size parameter.
+### Show the current user's badges
 
 ```javascript
-const results = await sdk.web.User.search('john')
-results.forEach((u) => console.log(u.userId, u.username, u.avatar))
+import { web } from "@gainsight-hub/sdk";
+
+const me = await web.Context.User()
+if (me.userId !== null && me.badges.length > 0) {
+  const list = document.createElement('ul')
+  me.badges.forEach((badge) => {
+    const li = document.createElement('li')
+    li.textContent = badge.title
+    list.appendChild(li)
+  })
+  document.getElementById('badges')?.appendChild(list)
+}
 ```
 
-### `User.getUsersById(ids)`
-
-Batch-fetch up to 100 users by ID. Unresolved IDs are silently omitted — the result array may be shorter than the input.
-
-Numeric strings are accepted and coerced. Returns an array (not a map keyed by ID — iterate with `.find()` or build your own map).
+### Personalize based on profile fields
 
 ```javascript
-const users = await sdk.web.User.getUsersById([101, 202, 303])
-const user = users.find((u) => u.userId === 101)
+import { web } from "@gainsight-hub/sdk";
+
+const me = await web.Context.User()
+if (me.userId !== null) {
+  // Find a profile field by ID (field IDs are specific to your community)
+  const seniority = me.profileFields.find((f) => f.id === 3)
+  if (seniority?.value === 'senior') {
+    document.getElementById('advanced-content')?.removeAttribute('hidden')
+  }
+}
 ```
 
-### `User.getById(id)`
-
-Fetch a single user by ID. Returns `null` if the ID does not resolve.
+### Find users and use in UI
 
 ```javascript
-const user = await sdk.web.User.getById(101)
-if (user) console.log(user.username)
+import { web } from "@gainsight-hub/sdk";
+
+const users = await web.User.getUsersById([1, 2, 3])
+users.forEach((u) => console.log(u.userId, u.username, u.avatar))
 ```
 
-### `User.list(options?)`
-
-List and filter community members with pagination and sorting. Returns `{ totalItems, items }` — **defaults to 25 items per page (max 100)**.
+### List moderators
 
 ```javascript
-const { totalItems, items } = await sdk.web.User.list({
-  role: [7],
+import { web } from "@gainsight-hub/sdk";
+
+const { totalItems, items } = await web.User.list({
+  role: [7], // role IDs are specific to your community
   sort: 'lastVisit',
   order: 'desc',
-  size: 20
+  size: 10
 })
+console.log(`${items.length} of ${totalItems} moderators`)
+items.forEach((u) => console.log(u.username, u.rank?.name))
 ```
 
-Key options: `search`, `role`, `joinDate`, `lastActivity`, `topics`, `replies`, `points`, `page`, `size`, `sort`, `order`. See [User Context](user-context#user-lookup-and-listing-methods) for the full options reference.
-
-### `User.getRecentlyActive(limit?)`
-
-Returns users sorted by last visit descending. Convenience wrapper around `list()`.
+### Load a script
 
 ```javascript
-const users = await sdk.web.User.getRecentlyActive(10)
+import { web } from "@gainsight-hub/sdk";
+
+web.loadScript("https://example.com/widget.js", () => {
+  // Widget script is loaded
+});
 ```
-
-### `User.getByRole(role, options?)`
-
-List users that hold one or more roles. `role` is a single role ID or an array (OR semantics).
-
-```javascript
-const { items } = await sdk.web.User.getByRole(7)
-const { items: multiRole } = await sdk.web.User.getByRole([7, 9], { size: 50 })
-```
-
-### User object shape
-
-All User methods except `search()` return the unified `User` model; `search()` returns a reduced `UserSearchResult`. A field with no value is omitted, not `null`, so read optional fields with `?.`. See [User Context](user-context#user-object-shape) for every field and its type, and [Field Availability by Method](user-context#field-availability-by-method) for which methods return which fields.
-
-***
-
-## Subscription Methods
-
-All subscription methods require valid identifiers.
-
-### Topics
-
-| Method | Description |
-|--------|-------------|
-| `Subscription.subscribeToTopic(publicId)` | Subscribe to a topic by its **public** ID. |
-| `Subscription.unsubscribeFromTopic(publicId)` | Unsubscribe from a topic. |
-| `Subscription.getTopicSubscriptionStatus(publicId)` | Returns `true` if the current user is subscribed. |
-
-### Categories
-
-| Method | Description |
-|--------|-------------|
-| `Subscription.subscribeToCategory(categoryId)` | Subscribe to a category (ID as string). |
-| `Subscription.unsubscribeFromCategory(categoryId)` | Unsubscribe from a category. |
-| `Subscription.getCategorySubscriptionStatus(categoryId)` | Returns `true` if the current user is subscribed to the category. |
-
-```javascript
-await sdk.web.Subscription.subscribeToTopic('topic-123')
-const isSubscribed = await sdk.web.Subscription.getTopicSubscriptionStatus('topic-123')
-
-await sdk.web.Subscription.subscribeToCategory('42')
-const subscribedToCategory = await sdk.web.Subscription.getCategorySubscriptionStatus('42')
-```
-
-***
-
-## Error handling
-
-SDK methods that call the backend or DOM throw on failure. Use try/catch and handle missing or invalid arguments.
-
-```javascript
-try {
-  const users = await sdk.web.User.search('john')
-  console.log(users)
-} catch (err) {
-  console.error('User search failed:', err.message)
-}
-```
-
-Common cases:
-
-| Scenario | Cause |
-|----------|-------|
-| "can only be called in a browser environment" | Method was run in Node or an environment without `window`. |
-| "Search can only be used in browser environment" | Content search was run outside a browser. |
-| "Search query is required" / "User IDs array is required" | Missing or invalid arguments. |
-| "privateId is required for this operation" | Content action (like, vote, etc.) was called on an instance created without a private ID. |
-| "User must be logged in or provide a userId" | Like/vote/unvote used without a logged-in user or explicit ID. |
-| HTTP/network errors | Backend request failed (e.g. subscription, search, user fetch). |
-
-***
 
 ## Next Steps
 
-* [User Context](user-context) — complete reference for `Context.User()`, all User methods, User object schema, and examples
-* [Examples](examples) — runnable code covering search, subscriptions, users, and DOM interactions
-* [Web SDK](overview) — how the SDK is loaded and when to use each method.
+* [SDK Reference](/sdk/reference) — full method signatures, options, and error handling
+* [User Context](/sdk/user-context) — complete reference for `Context.User()`, all User methods, and the User object schema
+* [Testing & Debugging](/connectors/testing-and-debugging) — verify your Connector setup works
+* [Configuration](/connectors/configuration) — set up the connector your widget calls
+* [Widgets repository template](https://github.com/gainsight-hub/widgets-repository-template/tree/main/widgets) — working examples calling connectors
 
 ---
 
 ---
-url: https://developer-portal.gainsight.com/docs/sdk/web-sdk/user-context.md
+url: https://developer-portal.gainsight.com/docs/sdk/user-context.md
 description: >-
   Complete reference for user context in the Web SDK — fetching the current
   viewer, looking up community members, the full User object schema, guest
@@ -10766,10 +10785,10 @@ description: >-
 
 # User Context
 
-This page documents the Web SDK user-context API: fetching the current viewer with `sdk.web.Context.User()` and looking up community members with the `sdk.web.User.*` methods. All run as the visiting user, authorized by the community session cookie.
+This page documents the Web SDK user-context API: fetching the current viewer with `web.Context.User()` and looking up community members with the `web.User.*` methods. All run as the visiting user, authorized by the community session cookie.
 
 ::: info Where the examples run
-Examples run inside a widget's `init(sdk)` function, after checking that `sdk.web` is defined. It is `undefined` on embedded widgets and Skilljar host pages. See [Web SDK](overview).
+Every example imports `web` from `@gainsight-hub/sdk` and runs in a widget or in a sitewide script registered with `"type": "module"`. See [SDK](/sdk/). `web` forwards to the community's Web SDK and throws on pages without it.
 :::
 
 ::: tip
@@ -10788,7 +10807,7 @@ Fetches the current user for the active session. This is the direct replacement 
 * For an unauthenticated (guest) visitor, resolves to the **guest projection** — a `User` object with `userId: null` and `username: "guest"`. It is **never `null`**; branch on `userId` to tell guest from member.
 * Throws if called outside a browser environment or if the network request fails.
 
-Accepts an optional `{ include }` that the backend currently ignores — call it with no arguments. For a signed-in visitor, `badges` and `profileFields` are always present (an empty array when there is nothing to show) and `rank` is present when the user has one. The guest result has `badges: []` and no `profileFields` or `rank`; see [Guest Handling](#guest-handling).
+Takes no parameters. For a signed-in visitor, `badges` and `profileFields` are always present (an empty array when there is nothing to show) and `rank` is present when the user has one. The guest result has `badges: []` and no `profileFields` or `rank`; see [Guest Handling](#guest-handling).
 
 ::: warning Private profile fields are included
 `Context.User()` returns the signed-in member's own profile fields, including the ones set to **Private** (`visibility: 2`). Private keeps a field from other members. It does not keep it from scripts running on the community page (analytics, tag managers, chat tools, other widgets), which can read it through the SDK. Do not send `profileFields` to external services or logs, and filter on `visibility === 1` when you need only public values. `User.getById()` called with the viewer's own ID returns public fields only.
@@ -10799,17 +10818,13 @@ Private account data is never included, even for the signed-in viewer: email add
 **Checking authenticated vs. guest:** branch on `userId`, not on `null`.
 
 ```javascript
-export async function init(sdk) {
-  await sdk.whenReady()
-  if (!sdk.web) return
+import { web } from "@gainsight-hub/sdk";
 
-  const me = await sdk.web.Context.User()
+const me = await web.Context.User()
 
-  if (me.userId === null) {
-    // Guest — show a login prompt or public-only content
-    return
-  }
-
+if (me.userId === null) {
+  // Guest — show a login prompt or public-only content
+} else {
   // Authenticated — personalize the UI
   console.log(me.username)        // 'janedoe'
   console.log(me.userId)          // 101
@@ -10836,7 +10851,9 @@ Fetch a single user by numeric ID.
 | `id` | `number \| string` | User ID. Numeric strings are accepted and coerced. |
 
 ```javascript
-const user = await sdk.web.User.getById(101)
+import { web } from "@gainsight-hub/sdk";
+
+const user = await web.User.getById(101)
 if (user) {
   console.log(user.username, user.rank?.name)
 }
@@ -10855,7 +10872,9 @@ Up to 100 IDs per request. IDs beyond the hundredth are dropped, not refused.
 | `ids` | `Array<number \| string>` | User IDs to fetch. Numeric strings are accepted. |
 
 ```javascript
-const users = await sdk.web.User.getUsersById([101, 202, 303])
+import { web } from "@gainsight-hub/sdk";
+
+const users = await web.User.getUsersById([101, 202, 303])
 // users.length may be less than 3 if any ID did not resolve
 users.forEach((u) => console.log(u.userId, u.username))
 ```
@@ -10885,20 +10904,18 @@ List and filter community members with pagination, sorting, and filtering. Retur
 | `sort` | `UserSortField` | `'userId'` | Sort field. |
 | `order` | `'asc' \| 'desc'` | `'desc'` | Sort direction. |
 
-::: warning Not implemented
-The typed options `customRoles`, `rank`, `badges` and `groups` are not implemented. The backend rejects them with HTTP 400 and the whole request fails.
-:::
-
 Role, badge, and profile-field IDs used in the filters and examples below are **specific to each community**. Find your community's values in its admin settings (the Roles, Badges, and Profile Fields sections) instead of reusing the sample IDs.
 
 **`DateFilter`** — ISO-8601 datetime, ISO-8601 duration relative to now (e.g. `'P3D'` = last 72 h), or `{ from?, to? }` range:
 
 ```javascript
+import { web } from "@gainsight-hub/sdk";
+
 // Users who joined in the last 7 days
-const { items: recent } = await sdk.web.User.list({ joinDate: 'P7D' })
+const { items } = await web.User.list({ joinDate: 'P7D' })
 
 // Users who joined in a specific range
-const { items: ranged } = await sdk.web.User.list({
+const { items } = await web.User.list({
   joinDate: { from: '2024-01-01T00:00:00Z', to: '2024-12-31T23:59:59Z' }
 })
 ```
@@ -10906,8 +10923,10 @@ const { items: ranged } = await sdk.web.User.list({
 **`NumberFilter`** — exact integer or `{ eq?, gt?, gte?, lt?, lte? }` range:
 
 ```javascript
+import { web } from "@gainsight-hub/sdk";
+
 // Users with 10 or more topics
-const { items } = await sdk.web.User.list({ topics: { gte: 10 } })
+const { items } = await web.User.list({ topics: { gte: 10 } })
 ```
 
 **`UserSortField`** values: `'userId'` | `'username'` | `'replies'` | `'topics'` | `'points'` | `'lastVisit'` | `'joinDate'` | `'lastActivity'`
@@ -10917,43 +10936,34 @@ There is no sort by total post count. `topics` and `replies` sort separately, an
 **Example — list moderators sorted by last visit:**
 
 ```javascript
-export async function init(sdk) {
-  await sdk.whenReady()
-  if (!sdk.web) return
+import { web } from "@gainsight-hub/sdk";
 
-  const { totalItems, items } = await sdk.web.User.list({
-    role: [7],
-    sort: 'lastVisit',
-    order: 'desc',
-    size: 20
-  })
-  console.log(`${items.length} of ${totalItems} moderators`)
-  items.forEach((u) => console.log(u.username, u.lastVisit))
-}
+const { totalItems, items } = await web.User.list({
+  role: [7],
+  sort: 'lastVisit',
+  order: 'desc',
+  size: 20
+})
+console.log(`${items.length} of ${totalItems} moderators`)
+items.forEach((u) => console.log(u.username, u.lastVisit))
 ```
 
 **Example — paginate through all users:**
 
 ```javascript
-export async function init(sdk) {
-  await sdk.whenReady()
-  if (!sdk.web) return
+import { web } from "@gainsight-hub/sdk";
 
-  const size = 100
-  const maxPage = Math.floor(10000 / size)
-  let page = 1
-  let total = Infinity
+const size = 100
+let page = 1
+let total = Infinity
 
-  while (page <= maxPage && (page - 1) * size < total) {
-    const result = await sdk.web.User.list({ page, size })
-    total = result.totalItems
-    result.items.forEach((u) => console.log(u.userId, u.username))
-    page++
-  }
+while ((page - 1) * size < total) {
+  const result = await web.User.list({ page, size })
+  total = result.totalItems
+  result.items.forEach((u) => console.log(u.userId, u.username))
+  page++
 }
 ```
-
-Only the first 10,000 matches can be paged: `page × size` must stay at or below 10,000, and beyond that the backend returns the last reachable page again.
 
 ### `User.getRecentlyActive(limit?)`
 
@@ -10966,7 +10976,9 @@ Convenience wrapper around `list()`. Returns users sorted by `lastVisit` descend
 | `limit` | `number` | `10` | Maximum users to return. |
 
 ```javascript
-const recentUsers = await sdk.web.User.getRecentlyActive(5)
+import { web } from "@gainsight-hub/sdk";
+
+const recentUsers = await web.User.getRecentlyActive(5)
 recentUsers.forEach((u) => console.log(u.username, u.lastVisit))
 ```
 
@@ -10982,11 +10994,13 @@ List users whose main role is one of the specified roles. Custom roles are not m
 | `options` | `object` | Same pagination and sort options as `list()` (minus `role`). |
 
 ```javascript
+import { web } from "@gainsight-hub/sdk";
+
 // Users with role id 7, first page
-const { totalItems, items } = await sdk.web.User.getByRole(7, { size: 50 })
+const { totalItems, items } = await web.User.getByRole(7, { size: 50 })
 
 // Users with any of these roles
-const { items: anyRole } = await sdk.web.User.getByRole([7, 9])
+const { items } = await web.User.getByRole([7, 9])
 ```
 
 ### `User.search(query)`
@@ -11001,22 +11015,24 @@ Search users by a query string. Returns a reduced field set optimized for mentio
 |---|---|---|
 | `query` | `string` | Non-empty search query |
 
-**`UserSearchResult` object shape:** all fields are optional; only keys the row carries are present.
+**`UserSearchResult` object shape:**
 
 | Field | Type | Notes |
 |---|---|---|
-| `userId` (optional) | `number` | Canonical user ID. |
-| `username` (optional) | `string` | Display username. |
-| `profileUrl` (optional) | `string \| null` | Absolute URL to the profile page. |
-| `avatar` (optional) | `string` | Avatar URL, or `""` when none. |
-| `userTitle` (optional) | `string` | Display title. |
-| `reputation` (optional) | `number \| null` | Reputation level, not the raw points. Omitted when no level is available for the user. |
-| `isBanned` (optional) | `boolean` | `true` if the user holds the banned role. |
-| `badges` (optional) | `Badge[]` | Hydrated badges, **without `id`**. |
-| `rank` (optional) | `Rank \| null` | Hydrated rank, **without `id`**. |
+| `userId` | `number` | Canonical user ID. |
+| `username` | `string` | Display username. `"guest"` on the guest projection. |
+| `profileUrl` | `string \| null` | Absolute URL to the profile page. |
+| `avatar` | `string` | Avatar URL, or `""` when none. |
+| `userTitle` | `string` | Display title. |
+| `reputation` | `number \| null` | Reputation level, not the raw points. Omitted when no level is available for the user. |
+| `isBanned` | `boolean` | `true` if the user holds the banned role. |
+| `badges` | `Badge[]` | Hydrated badges, **without `id`**. |
+| `rank` | `Rank \| null` | Hydrated rank, **without `id`**. |
 
 ```javascript
-const results = await sdk.web.User.search('jane')
+import { web } from "@gainsight-hub/sdk";
+
+const results = await web.User.search('jane')
 results.forEach((u) => console.log(u.userId, u.username, u.avatar))
 ```
 
@@ -11100,7 +11116,7 @@ A user has no rank until the community's rank conditions assign one (a new membe
 | `groups` | `number[]` | Group IDs the user belongs to. |
 | `profileFields` | `ProfileField[]` | Custom profile fields stored for this user that the viewer is allowed to see, in the community's display order; see below. |
 
-`profileFields` is not the community's full field list: one user can have 1 entry and another 17, so look a field up by `id`, never by position. To find a field's `id`, log your own `sdk.web.Context.User()` and read `profileFields`. A field titled "Email" is an ordinary profile field, not the account email address, which is never returned.
+`profileFields` is not the community's full field list: one user can have 1 entry and another 17, so look a field up by `id`, never by position. To find a field's `id`, log your own `web.Context.User()` and read `profileFields`. A field titled "Email" is an ordinary profile field, not the account email address, which is never returned.
 
 **`ProfileField` object shape:**
 
@@ -11140,11 +11156,11 @@ The `User` object never carries private account data — no email address, priva
 
 ## Guest Handling
 
-When an unauthenticated visitor calls `sdk.web.Context.User()`, it resolves to the **guest projection** — a `User` object with `userId: null`, `username: "guest"`, and zeroed counts. It is never `null`, so always branch on `me.userId === null` before treating the viewer as a member.
+When an unauthenticated visitor calls `web.Context.User()`, it resolves to the **guest projection** — a `User` object with `userId: null`, `username: "guest"`, and zeroed counts. It is never `null`, so always branch on `me.userId === null` before treating the viewer as a member.
 
 The guest result contains only these keys: `userId` and `id` (both `null`), `username` and `name` (`"guest"`), `avatar` (`""`), `badges` and `groups` (both `[]`), `isBanned` (`false`), `isModerator` (`false`), `mainRole` (`"roles.guest"`), and `topics`, `replies` and `points` (all `0`). It has no `profileFields`, `rank`, `role`, `profileUrl` or date fields, so guard reads such as `me.profileFields` and `me.joinDate` behind the `userId === null` check.
 
-For `sdk.web.User.list()` and related methods, guests get the public field set. Email-based `search` requires an authenticated session (guests receive a 403).
+For `web.User.list()` and related methods, guests get the public field set. Email-based `search` requires an authenticated session (guests receive a 403).
 
 ::: warning Private communities
 On a **private community**, unauthenticated requests are redirected to the login page instead of returning data, so the SDK call rejects rather than resolving. Wrap calls in `try/catch` and treat a rejection as "not signed in."
@@ -11204,20 +11220,17 @@ Some legacy `inSidedData.user` fields have **no canonical equivalent**:
 All methods throw on failure. Wrap calls in `try/catch`:
 
 ```javascript
-export async function init(sdk) {
-  await sdk.whenReady()
-  if (!sdk.web) return
+import { web } from "@gainsight-hub/sdk";
 
-  try {
-    const me = await sdk.web.Context.User()
-    if (me.userId === null) {
-      // Guest — handle gracefully
-      return
-    }
+try {
+  const me = await web.Context.User()
+  if (me.userId === null) {
+    // Guest — handle gracefully
+  } else {
     // Use me.username, me.rank, etc.
-  } catch (err) {
-    console.error('Failed to fetch user context:', err.message)
   }
+} catch (err) {
+  console.error('Failed to fetch user context:', err.message)
 }
 ```
 
@@ -11231,15 +11244,15 @@ Common error conditions:
 | HTTP 5xx | A server error occurred. Retry after a brief delay. |
 | Rejected call (private community) | Unauthenticated requests are redirected to a login page instead of returning data; catch it and treat as "not signed in." |
 
-The SDK surfaces these as a rejected promise (a thrown `Error`). For an HTTP error response, `err.status` carries the status code — except from `User.search()`, whose message carries only the status text (`Failed to search users: <statusText>`). Network failures and the private-community redirect have no `err.status`; inspect `err.message` for detail.
+The SDK surfaces these as a rejected promise (a thrown `Error`), **not** as a structured status code you can switch on — the "Scenario" column describes the underlying cause, not a machine-readable field. Branch on whether the call rejected, and inspect `err.message` for detail; there is no reliable `err.status` to implement per-code handling.
 
 ***
 
 ## Next Steps
 
-* [Examples](examples) — runnable, copy-paste code for `Context.User()` and the `User.*` methods
-* [Reference](methods-constructors) — full reference for all SDK namespaces
-* [Web SDK](overview) — availability and quick start
+* [SDK Examples](/sdk/examples) — runnable, copy-paste code for `Context.User()` and the `User.*` methods
+* [SDK Reference](/sdk/reference) — full reference for all SDK namespaces
+* [SDK](/sdk/) — how the import resolves and project setup
 * [Passing User Context](/connectors/passing-user-context) — use server-side template variables when building Connectors that need the viewer's identity
 
 QUICK REFERENCE — user context:
@@ -11249,175 +11262,14 @@ QUICK REFERENCE — user context:
 * For signed-in users badges and profileFields are always present on Context.User() and on every User lookup except search(). The guest result has badges: \[] and no profileFields, rank, role, profileUrl or date fields, so check me.userId === null before reading them. rank is present only when the user has one; test rank, not rankId.
 * profileFields lists only the fields stored for that user and visible to the viewer, not every field the community defines, so look entries up by id. A value is exactly as stored: an empty text field is "", an unset select, check or date field is null.
 * Timestamps (joinDate, lastActivity, lastVisit) are UTC ISO-8601 strings with a +00:00 offset, for example 2024-03-18T09:30:00+00:00. lastActivity equals joinDate until the user has activity; lastVisit is omitted for users who never visited. profileUrl contains a URL-safe form of the username plus the user id (mod\_99 becomes mod-99); never build it from username.
-* User.getById(id) and User.getUsersById(ids) share one transport and return the same User shape, except getUsersById also adds the deprecated userLevel. getById resolves null for a missing id; getUsersById silently omits unresolved ids and accepts up to 100 ids.
+* User.getById(id) and User.getUsersById(ids) share one transport and return the identical full User shape. getById resolves null for a missing id; getUsersById silently omits unresolved ids and accepts up to 100 ids.
 * User.list(options) returns totalItems plus an items array; defaults are page 1 and size 25, with a max size of 100. getByRole() and getRecentlyActive() are thin wrappers over list(). A guest passing an email-address term to list({ search }) gets HTTP 403; username search works for guests.
 * User.search(query) returns up to 25 users (fixed, no size parameter) with a reduced field set for autocomplete UIs: no profileFields, and rank and badges carry no id. Use list() when you need the full object.
 * userId is canonical; id, name, and url are deprecated aliases of userId, username, and profileUrl. getUsersById also returns a deprecated userLevel alias of reputation. joinDate is an ISO-8601 string, not a Unix timestamp. profileUrl is an absolute URL.
 * A field with no value is omitted from the User object, not returned as null (userId and id are always present, null on the guest result). Fields marked optional in the tables can be absent; use optional chaining. Inside a rank object, empty fields (color, icon, iconUrl, avatarIcon, avatarIconUrl) are null, not omitted.
-* The User object has no firstName, lastName, signature, customRoles, solved, likesReceived, likesGiven, followers, or following fields today. Do not read them; they are not returned. isModerator and mainRole exist only on the guest result (false and "roles.guest"); a signed-in user never has them, so they cannot detect moderators. role is the main role id only (custom roles are not returned); role, badge and profile-field ids are specific to each community, so ask for them and never assume a sample id such as 7.
+* The User object has no firstName, lastName, signature, customRoles, solved, likesReceived, likesGiven, followers, or following fields today. Do not read them; they are not returned. isModerator and mainRole are not returned, so they cannot detect moderators. role is the main role id only (custom roles are not returned); role, badge and profile-field ids are specific to each community, so ask for them and never assume a sample id such as 7.
 * list() cannot sort by total post count. The sort fields are userId, username, replies, topics, points, lastVisit, joinDate, and lastActivity. Total post counts are not available, so never label any of those values as a post count.
 * All methods are browser-only and throw when no browser window is present.
-
----
-
----
-url: https://developer-portal.gainsight.com/docs/sdk/web-sdk/examples.md
-description: >-
-  Runnable code examples for the Web SDK — search, subscriptions, users, and
-  script loading.
----
-
-# Examples
-
-Use these ready-made code snippets to add search, user personalization, and dynamic content to your community pages. Each example is self-contained -- examples go in your widget's module script.
-
-::: info Prerequisites
-Widget examples run inside your widget's `init(sdk)` function on a community page where the community frontend has loaded, which makes `sdk.web` available. On other host pages `sdk.web` is `undefined`, so each example checks it first. See [Web SDK](overview) for availability details.
-:::
-
-## Search ideas and show titles
-
-```javascript
-export async function init(sdk) {
-  await sdk.whenReady()
-  if (!sdk.web) return // no Web SDK on this host page (e.g. embedded widgets, Skilljar)
-  const ideaInstance = sdk.web.Content.Idea()
-  const results = await ideaInstance.search('dashboard', { limit: 5 })
-  results.forEach((r) => console.log(r.title, r.url))
-}
-```
-
-## Search with filters and pagination
-
-```javascript
-export async function init(sdk) {
-  await sdk.whenReady()
-  if (!sdk.web) return // no Web SDK on this host page (e.g. embedded widgets, Skilljar)
-  const results = await sdk.web.Content.search('bug', {
-    contentType: ['idea', 'question'],
-    categoryName: 'Ideas',
-    limit: 20,
-    page: 1,
-    fetchMetadata: true
-  })
-  console.log(results)
-}
-```
-
-## Like an idea (logged-in user)
-
-```javascript
-export async function init(sdk) {
-  await sdk.whenReady()
-  if (!sdk.web) return // no Web SDK on this host page (e.g. embedded widgets, Skilljar)
-  const idea = sdk.web.Content.Idea(98765)
-  await idea.like()
-}
-```
-
-## Subscribe to a topic and check status
-
-```javascript
-export async function init(sdk) {
-  await sdk.whenReady()
-  if (!sdk.web) return // no Web SDK on this host page (e.g. embedded widgets, Skilljar)
-  await sdk.web.Subscription.subscribeToTopic('topic-abc')
-  const isSubscribed = await sdk.web.Subscription.getTopicSubscriptionStatus('topic-abc')
-  console.log(isSubscribed) // true
-}
-```
-
-## Get the current user (viewer context)
-
-```javascript
-export async function init(sdk) {
-  await sdk.whenReady()
-  if (!sdk.web) return // no Web SDK on this host page (e.g. embedded widgets, Skilljar)
-  const me = await sdk.web.Context.User()
-
-  if (me.userId === null) {
-    // Guest (guest projection) — show login prompt or public-only content
-    console.log('Not logged in')
-    return
-  }
-
-  // Authenticated viewer
-  console.log(me.username)     // 'janedoe'
-  console.log(me.userId)       // 101
-  console.log(me.rank?.name)   // 'Regular'
-  console.log(me.badges)       // [{ id: 100, title: 'First post', url: 'https://assets.example.com/…_thumb.png' }]
-}
-```
-
-## Show the current user's badges
-
-```javascript
-export async function init(sdk) {
-  await sdk.whenReady()
-  if (!sdk.web) return // no Web SDK on this host page (e.g. embedded widgets, Skilljar)
-  const me = await sdk.web.Context.User()
-  if (me.userId === null || me.badges.length === 0) return
-
-  const list = document.createElement('ul')
-  me.badges.forEach((badge) => {
-    const li = document.createElement('li')
-    li.textContent = badge.title
-    list.appendChild(li)
-  })
-  sdk.$('#badges')?.appendChild(list)
-}
-```
-
-## Personalize based on profile fields
-
-```javascript
-export async function init(sdk) {
-  await sdk.whenReady()
-  if (!sdk.web) return // no Web SDK on this host page (e.g. embedded widgets, Skilljar)
-  const me = await sdk.web.Context.User()
-  if (me.userId === null) return
-
-  // Find a profile field by ID (field IDs are specific to your community)
-  const seniority = me.profileFields.find((f) => f.id === 3)
-  if (seniority?.value === 'senior') {
-    sdk.$('#advanced-content')?.removeAttribute('hidden')
-  }
-}
-```
-
-## Find users and use in UI
-
-```javascript
-export async function init(sdk) {
-  await sdk.whenReady()
-  if (!sdk.web) return // no Web SDK on this host page (e.g. embedded widgets, Skilljar)
-  const users = await sdk.web.User.getUsersById([1, 2, 3])
-  users.forEach((u) => console.log(u.userId, u.username, u.avatar))
-}
-```
-
-## List moderators
-
-```javascript
-export async function init(sdk) {
-  await sdk.whenReady()
-  if (!sdk.web) return // no Web SDK on this host page (e.g. embedded widgets, Skilljar)
-  const { totalItems, items } = await sdk.web.User.list({
-    role: [7], // role IDs are specific to your community
-    sort: 'lastVisit',
-    order: 'desc',
-    size: 10
-  })
-  console.log(`${items.length} of ${totalItems} moderators`)
-  items.forEach((u) => console.log(u.username, u.rank?.name))
-}
-```
-
-## Next Steps
-
-* [User Context](user-context) — complete reference for `Context.User()`, all User methods, and the User object schema
-* [Reference](methods-constructors) — Loading scripts, Content, User, Subscription methods, and error handling
-* [Web SDK](overview) — how the SDK is loaded and when to use each API
 
 ---
 
@@ -11856,7 +11708,7 @@ gsds script new analytics-tracker
 gsds style new brand-overrides
 ```
 
-`new` scaffolds the source file in your repository and adds an entry to `extensions_registry.json`. Edit the file, then run `gsds build` to confirm the registry entry still resolves to it.
+`new` scaffolds the source file in your repository and adds an entry to `extensions_registry.json`. `gsds script new` registers the script with `"attributes": {"type": "module"}` (gsds 1.9.0+) so it can `import { connectors, web } from "@gainsight-hub/sdk"`; `--attr` cannot change the type. `gsds script link <url>` adds no type. Edit the file, then run `gsds build` to confirm the registry entry still resolves to it.
 
 ## Register an external URL
 
@@ -12530,8 +12382,8 @@ API requests require authentication. See the [Authentication](/api/api-authentic
 
 ## Related
 
-* [Web SDK](/sdk/web-sdk/overview) — call community APIs from widget code (`sdk.web`) or script code without managing auth yourself
-* [Connectors SDK](/sdk/connectors-sdk/overview) — call [Connectors](/connectors/) from widget code with `sdk.connectors` to reach external APIs
+* [Web SDK](/sdk/reference#web) — call community APIs from widget or script code with `web` from [`@gainsight-hub/sdk`](/sdk/), without managing auth yourself
+* [Connectors SDK](/sdk/reference#connectors) — call [Connectors](/connectors/) from widget code with `connectors` from `@gainsight-hub/sdk` to reach external APIs
 * [Connectors](/connectors/) — configure secure proxy endpoints to external services
 
 ---
@@ -29871,7 +29723,7 @@ The Developer Studio CLI (`gsds`) is now available, letting you scaffold widgets
 
 ## 2026-09-21 - Web SDK: User Context
 
-The Web SDK can now read the current viewer and look up community members directly in the browser, without building a Connector. Use `ChWebSdk.Context.User()` to get the signed-in user (and a guest result when no one is signed in), and the `ChWebSdk.User.*` methods to fetch, list, filter, and search members. All responses use one unified user model and never include private data such as email addresses, message counts, or login source. See [User Context](/sdk/web-sdk/user-context) for the full reference.
+The Web SDK can now read the current viewer and look up community members directly in the browser, without building a Connector. Use `ChWebSdk.Context.User()` to get the signed-in user (and a guest result when no one is signed in), and the `ChWebSdk.User.*` methods to fetch, list, filter, and search members. All responses use one unified user model and never include private data such as email addresses, message counts, or login source. See [User Context](/sdk/user-context) for the full reference.
 
 ## 2026-09-18 - More Reliable Recovery When the AI Widget Builder Needs a Second Attempt
 

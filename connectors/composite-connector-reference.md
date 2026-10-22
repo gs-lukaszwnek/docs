@@ -64,7 +64,7 @@ For the full list of Jinja2 filters and functions, see [Template Variables](temp
 
 ## SDK
 
-`sdk.connectors.composite.execute(options)` executes a composite connector from widget code and returns a Promise that resolves with the parsed response body.
+`connectors.composite.execute(options)` executes a composite connector from widget code and returns a Promise that resolves with the parsed response body.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -76,22 +76,22 @@ The HTTP method is always POST. It is not configurable by the caller — the SDK
 
 ```html
 <script type="module">
-export async function init(sdk) {
-  try {
-    const data = await sdk.connectors.composite.execute({
-      permalink: "auth-and-fetch-user",
-      payload: { userId: "usr_123" },
-      queryParams: { format: "json" }
-    });
-    console.log("Result:", data);
-  } catch (error) {
-    console.error("Connector request failed:", error);
-  }
+import { connectors } from "@gainsight-hub/sdk";
+
+try {
+  const data = await connectors.composite.execute({
+    permalink: "auth-and-fetch-user",
+    payload: { userId: "usr_123" },
+    queryParams: { format: "json" }
+  });
+  console.log("Result:", data);
+} catch (error) {
+  console.error("Connector request failed:", error);
 }
 </script>
 ```
 
-Errors (step 4xx/5xx, template errors, network errors) reject the returned Promise with an error object consistent with errors thrown by `sdk.connectors.execute()`.
+Errors (step 4xx/5xx, template errors, network errors) reject the returned Promise with an error object consistent with errors thrown by `connectors.execute()`.
 
 ## Response headers
 

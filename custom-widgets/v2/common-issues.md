@@ -266,37 +266,39 @@ These issues occur after a widget is published and running in the browser, not d
 
 **Root cause**: `document.querySelector()` cannot reach elements inside Shadow DOM. The connector response arrives, but your code fails to find the DOM element to update.
 
-**Solution**: Query elements with `sdk.$()` inside `export async function init(sdk)`, after `await sdk.whenReady()`. `sdk.$()` is scoped to the widget's shadow root:
+**Solution**: Query elements through the widget's shadow root, not `document`:
 
 ```js
-export async function init(sdk) {
-  await sdk.whenReady()
-
-  const data = await sdk.connectors.execute({ permalink: 'weather-api', method: 'GET' })
-  sdk.$('.status').textContent = data.city
-}
+var hosts = document.querySelectorAll(
+  'gs-cc-registry-widget[data-widget-type*="your_widget_type"]'
+);
+hosts.forEach(function(host) {
+  var root = host.shadowRoot;
+  if (root) {
+    var el = root.querySelector('.status');
+    // update el here
+  }
+});
 ```
 
 See [Rendering & DOM](rendering-and-dom) for the full pattern.
 
 ### Only one widget instance updates, others stay on 'Loading...'
 
-**Root cause**: Using `document.querySelector` (returns the **first** match only) to find the widget, so only one instance is updated.
+**Root cause**: Using `querySelector` (returns the **first** match only) instead of `querySelectorAll`.
 
-**Solution**: Use `sdk.$()` inside `init(sdk)`. `init` runs once per widget instance, so every instance queries its own shadow root and updates itself:
+**Solution**: Use `querySelectorAll` and iterate over all host elements:
 
 ```js
-// Wrong: returns only the first instance's host
+// Wrong: querySelector returns only the first match
 var host = document.querySelector('gs-cc-registry-widget[data-widget-type*="weather"]');
 
-// Correct: runs for every instance
-export async function init(sdk) {
-  await sdk.whenReady()
-  sdk.$('.status').textContent = 'Updated'
-}
+// Correct: querySelectorAll iterates all instances
+var hosts = document.querySelectorAll('gs-cc-registry-widget[data-widget-type*="weather"]');
+hosts.forEach(function(host) { /* update each instance */ });
 ```
 
-Host iteration (`document.querySelectorAll(...)` plus `host.shadowRoot`) is only needed in page scripts outside a widget. See [Rendering & DOM](rendering-and-dom#multiple-widget-instances).
+See [Rendering & DOM](rendering-and-dom#multiple-widget-instances).
 
 ## Content Security Issues
 

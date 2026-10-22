@@ -25,6 +25,6 @@ API requests require authentication. See the [Authentication](/api/api-authentic
 
 ## Related
 
-* [Web SDK](/sdk/web-sdk/overview) — call community APIs from widget code (`sdk.web`) or script code without managing auth yourself
-* [Connectors SDK](/sdk/connectors-sdk/overview) — call [Connectors](/connectors/) from widget code with `sdk.connectors` to reach external APIs
+* [Web SDK](/sdk/reference#web) — call community APIs from widget or script code with `web` from [`@gainsight-hub/sdk`](/sdk/), without managing auth yourself
+* [Connectors SDK](/sdk/reference#connectors) — call [Connectors](/connectors/) from widget code with `connectors` from `@gainsight-hub/sdk` to reach external APIs
 * [Connectors](/connectors/) — configure secure proxy endpoints to external services

@@ -45,7 +45,7 @@ The **No-Code Builder** is a visual editor where you can add, arrange, and confi
 
 **Best for**: Developers wiring live data into a widget.
 
-The **SDK** is the `sdk` object passed to your widget's `init(sdk)` function. Use `sdk.connectors` to call connectors and `sdk.web` to read community context from the browser.
+The **SDK** is the JavaScript library your widget code uses to call connectors and read community context from the browser.
 
 [SDK](/sdk/)
 

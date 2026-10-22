@@ -24,15 +24,15 @@ A filter written in widget JavaScript only controls **what the widget renders**.
 ::: danger Wrong: filtering in widget code
 
 ```javascript
-export async function init(sdk) {
-  // The full response is already in the browser
-  const data = await sdk.connectors.execute({
-    permalink: "groups",
-    method: "GET"
-  });
-  const publicGroups = data.groups.filter(g => !g.hidden);
-  // data still contains every hidden group in the Network tab
-}
+// The full response is already in the browser
+import { connectors } from "@gainsight-hub/sdk";
+
+const data = await connectors.execute({
+  permalink: "groups",
+  method: "GET"
+});
+const publicGroups = data.groups.filter(g => !g.hidden);
+// data still contains every hidden group in the Network tab
 ```
 
 :::

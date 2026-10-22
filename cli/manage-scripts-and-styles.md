@@ -29,7 +29,7 @@ gsds script new analytics-tracker
 gsds style new brand-overrides
 ```
 
-`new` scaffolds the source file in your repository and adds an entry to `extensions_registry.json`. Edit the file, then run `gsds build` to confirm the registry entry still resolves to it.
+`new` scaffolds the source file in your repository and adds an entry to `extensions_registry.json`. `gsds script new` registers the script with `"attributes": {"type": "module"}` (gsds 1.9.0+) so it can `import { connectors, web } from "@gainsight-hub/sdk"`; `--attr` cannot change the type. `gsds script link <url>` adds no type. Edit the file, then run `gsds build` to confirm the registry entry still resolves to it.
 
 ## Register an external URL
 

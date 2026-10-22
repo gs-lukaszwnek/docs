@@ -64,21 +64,21 @@ You should see a successful response with weather data for London — temperatur
 
 ## Step 5: Call the Connector from Widget Code
 
-Open your widget HTML file and add the following code (the `sdk` object passed to your widget's `init(sdk)` already includes `sdk.connectors` — no script tag needed):
+Open your widget HTML file and add the following code (the [SDK import](/sdk/#how-the-import-resolves) is resolved automatically by Customer Community):
 
 ```html
 <script type="module">
-export async function init(sdk) {
-  try {
-    const data = await sdk.connectors.execute({
-      permalink: "weather-api",
-      method: "GET",
-      queryParams: { q: "Warsaw" }
-    });
-    console.log("Weather data:", data);
-  } catch (error) {
-    console.error("Connector request failed:", error);
-  }
+import { connectors } from "@gainsight-hub/sdk";
+
+try {
+  const data = await connectors.execute({
+    permalink: "weather-api",
+    method: "GET",
+    queryParams: { q: "Warsaw" }
+  });
+  console.log("Weather data:", data);
+} catch (error) {
+  console.error("Connector request failed:", error);
 }
 </script>
 ```
@@ -94,24 +94,31 @@ Update the widget HTML to show the weather data on screen. Replace the `console.
 ```html
 <div id="weather">Loading...</div>
 <script type="module">
-export async function init(sdk) {
-  await sdk.whenReady();
-  try {
-    const data = await sdk.connectors.execute({
-      permalink: "weather-api",
-      method: "GET",
-      queryParams: { q: "Warsaw" }
-    });
-    sdk.$("#weather").textContent =
-      data.location.name + ": " + data.current.temp_c + "°C, " + data.current.condition.text;
-  } catch (error) {
-    console.error("Connector request failed:", error);
-  }
+import { connectors } from "@gainsight-hub/sdk";
+
+try {
+  const data = await connectors.execute({
+    permalink: "weather-api",
+    method: "GET",
+    queryParams: { q: "Warsaw" }
+  });
+  // Find the widget host and query inside its shadow root
+  var hosts = document.querySelectorAll(
+    'gs-cc-registry-widget[data-widget-type*="weather"]'
+  );
+  hosts.forEach(function(host) {
+    var el = host.shadowRoot && host.shadowRoot.getElementById("weather");
+    if (el) {
+      el.textContent = data.location.name + ": " + data.current.temp_c + "°C, " + data.current.condition.text;
+    }
+  });
+} catch (error) {
+  console.error("Connector request failed:", error);
 }
 </script>
 ```
 
-The widget code runs inside Shadow DOM, so `document.getElementById()` cannot reach elements inside the widget. `sdk.$()` queries inside the widget's shadow root instead. See [Rendering & DOM](/custom-widgets/v2/rendering-and-dom) for details on this pattern.
+The widget code runs inside Shadow DOM, so `document.getElementById()` cannot reach elements inside the widget. Instead, find the widget host element and query through its `shadowRoot`. See [Rendering & DOM](/custom-widgets/v2/rendering-and-dom) for details on this pattern.
 
 Publish and open the widget again.
 

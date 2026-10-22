@@ -68,7 +68,7 @@ Composite connector steps follow the same rules.
 The **permalink** is a URL-safe identifier derived from the Connection Name (lowercase, spaces replaced by hyphens). You use it when calling the connector from widget code:
 
 ```javascript
-sdk.connectors.execute({ permalink: "weather-api", method: "GET" });
+connectors.execute({ permalink: "weather-api", method: "GET" });
 ```
 
 ::: info URL template limitations

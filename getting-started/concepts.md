@@ -63,9 +63,9 @@ A reusable, plain-text configuration value — such as a base URL, environment i
 
 [Secrets and Variables](/connectors/secrets/#variables)
 
-## SDK
+## SDK (Widget SDK)
 
-The `sdk` object passed to your widget's `init(sdk)` function. It carries the widget runtime (props, shadow root, design tokens) and two clients: `sdk.connectors` calls connectors from inside a widget, so the browser never sees your credentials (`sdk.connectors.execute(...)` runs a connector and returns its response), and `sdk.web` reads community context through the Web SDK.
+A JavaScript library that widget code uses to interact with the platform. Its primary use is calling connectors from inside a widget — a call like `connectors.execute(...)`, with `connectors` imported from `@gainsight-hub/sdk`, runs a connector and returns its response, so the browser never sees your credentials.
 
 [SDK](/sdk/)
 

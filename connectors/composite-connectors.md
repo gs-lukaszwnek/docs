@@ -185,7 +185,7 @@ For example, to feed both the request payload and a query parameter into a step'
 }
 ```
 
-Calling sdk.connectors.composite.execute({ permalink: "...", payload: { userId: "usr\_123" }, queryParams: { region: "eu" } }) sends this step's request with `userId=usr_123&region=eu`. The `if request.body_text else ''` guard avoids a template error when no payload is sent — parsing `None` with `from_json` raises an error. Reading a `request.query_parameters` value needs no such guard: a missing key simply renders blank.
+Calling connectors.composite.execute({ permalink: "...", payload: { userId: "usr\_123" }, queryParams: { region: "eu" } }) sends this step's request with `userId=usr_123&region=eu`. The `if request.body_text else ''` guard avoids a template error when no payload is sent — parsing `None` with `from_json` raises an error. Reading a `request.query_parameters` value needs no such guard: a missing key simply renders blank.
 
 ::: warning Different from regular connectors
 Regular connectors use `body_text` and `body_raw` directly in payload templates. Composite connectors use `request.body_text` and `request.body_raw` — the `request.` prefix distinguishes client data from step result data.
@@ -193,19 +193,19 @@ Regular connectors use `body_text` and `body_raw` directly in payload templates.
 
 ## Execute a composite connector
 
-To call a composite connector from widget code, use `sdk.connectors.composite.execute()`:
+To call a composite connector from widget code, use `connectors.composite.execute()`:
 
 ```html
 <script type="module">
-export async function init(sdk) {
-  try {
-    const data = await sdk.connectors.composite.execute({
-      permalink: "contact-orders"
-    });
-    console.log("Result:", data);
-  } catch (error) {
-    console.error("Connector request failed:", error);
-  }
+import { connectors } from "@gainsight-hub/sdk";
+
+try {
+  const data = await connectors.composite.execute({
+    permalink: "contact-orders"
+  });
+  console.log("Result:", data);
+} catch (error) {
+  console.error("Connector request failed:", error);
 }
 </script>
 ```
@@ -213,24 +213,24 @@ export async function init(sdk) {
 The HTTP method is always POST — it is not a configurable parameter. The SDK owns this detail so you do not need to specify it.
 
 ::: warning Path parameters are not supported on composite connectors
-`pathParams` is a simple-connector concept only. Passing `pathParams` to `sdk.connectors.composite.execute()` rejects — no request is sent. If you need per-call path values inside a composite flow, embed them in the step URLs using template variables from previous steps' results. See [Dynamic URL Path Segments](dynamic-url-paths) for the simple-connector pattern.
+`pathParams` is a simple-connector concept only. Passing `pathParams` to `connectors.composite.execute()` rejects — no request is sent. If you need per-call path values inside a composite flow, embed them in the step URLs using template variables from previous steps' results. See [Dynamic URL Path Segments](dynamic-url-paths) for the simple-connector pattern.
 :::
 
 To pass a request body, include the `payload` option as a plain object. The SDK handles serialisation. Use `queryParams` to append URL query parameters — these are available in step templates as `request.query_parameters.<key>`:
 
 ```html
 <script type="module">
-export async function init(sdk) {
-  try {
-    const data = await sdk.connectors.composite.execute({
-      permalink: "contact-orders",
-      payload: { userId: "usr_123" },
-      queryParams: { format: "json" }
-    });
-    console.log("Result:", data);
-  } catch (error) {
-    console.error("Connector request failed:", error);
-  }
+import { connectors } from "@gainsight-hub/sdk";
+
+try {
+  const data = await connectors.composite.execute({
+    permalink: "contact-orders",
+    payload: { userId: "usr_123" },
+    queryParams: { format: "json" }
+  });
+  console.log("Result:", data);
+} catch (error) {
+  console.error("Connector request failed:", error);
 }
 </script>
 ```
